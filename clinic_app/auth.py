@@ -19,6 +19,9 @@ login_manager.login_view = "auth.login"
 
 @login_manager.user_loader
 def _load_user(user_id: str) -> User | None:
+    # Convert to string if it's an int (defensive coding)
+    if isinstance(user_id, int):
+        user_id = str(user_id)
     if not isinstance(user_id, str) or not user_id.strip():
         return None
     session = db.session()

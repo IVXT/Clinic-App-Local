@@ -823,12 +823,14 @@
                         data-status-url="{{ url_for('appointments.status', appt_id=appt.id) }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="next" value="{{ request.full_path }}">
+                    <input type="hidden" name="status" value="">
                     <button type="submit"
                             name="status"
                             value="scheduled"
                             class="status-chip status-option {{ 'is-active is-scheduled' if normalized_status == 'scheduled' else '' }}"
                             data-status-choice="scheduled"
-                            aria-pressed="{{ 'true' if normalized_status == 'scheduled' else 'false' }}">
+                            aria-pressed="{{ 'true' if normalized_status == 'scheduled' else 'false' }}"
+                            {% if not current_user.has_permission('appointments:edit') %}disabled{% endif %}>
                       {{ t('appointment_status_scheduled') }}
                     </button>
                     <button type="submit"
@@ -836,7 +838,8 @@
                             value="done"
                             class="status-chip status-option {{ 'is-active is-done' if normalized_status == 'done' else '' }}"
                             data-status-choice="done"
-                            aria-pressed="{{ 'true' if normalized_status == 'done' else 'false' }}">
+                            aria-pressed="{{ 'true' if normalized_status == 'done' else 'false' }}"
+                            {% if not current_user.has_permission('appointments:edit') %}disabled{% endif %}>
                       {{ t('appointment_status_done') }}
                     </button>
                   </form>

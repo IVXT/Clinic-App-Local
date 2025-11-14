@@ -36,9 +36,7 @@ def init_security(app) -> None:
         "appointment_move",
         "receipts",
         "expenses",
-        "admin_users",
-        "admin_roles",
-        "admin_doctors",
+        "admin_settings",
         "images",
     )
     for bp_name in protected_blueprints:

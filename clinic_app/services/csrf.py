@@ -21,6 +21,17 @@ def ensure_csrf_token(payload: MutableMapping[str, object] | Mapping[str, object
         token = payload.get("csrf_token")
         if token:
             payload.pop("csrf_token", None)
+    
+    print(f"CSRF DEBUG: Token from header: {bool(token)}")
+    print(f"CSRF DEBUG: Token length: {len(token) if token else 0}")
+    print(f"CSRF DEBUG: Payload contains csrf_token: {'csrf_token' in (payload or {})}")
+    
     if not token:
         raise CSRFError("The CSRF token is missing.")
-    validate_csrf(token, secret_key=current_app.secret_key)
+    
+    try:
+        validate_csrf(token, secret_key=current_app.secret_key)
+        print(f"CSRF DEBUG: Token validation successful")
+    except Exception as e:
+        print(f"CSRF DEBUG: Token validation failed: {e}")
+        raise

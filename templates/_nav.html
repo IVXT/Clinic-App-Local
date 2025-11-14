@@ -19,9 +19,7 @@
             <a class="secondary" href="{{ url_for('payments.export_payments_csv') }}">{{ t('export_payments') }}</a>
           {% endif %}
           {% if user_has_permission(current_user, 'admin.user.manage') %}
-            <a class="secondary" href="{{ url_for('admin_users.index') }}">Manage Users</a>
-            <a class="secondary" href="{{ url_for('admin_roles.index') }}">{{ t('roles_manage_title') }}</a>
-            <a class="secondary" href="{{ url_for('admin_doctors.doctor_colors') }}">Doctor Colors</a>
+            <a class="secondary" href="{{ url_for('admin_settings.index') }}">Admin Settings</a>
           {% endif %}
         </div>
       </div>

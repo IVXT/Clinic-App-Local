@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
-from flask import Blueprint, flash, g, redirect, request, url_for, jsonify
+from flask import Blueprint, current_app, flash, g, redirect, request, url_for, jsonify
 
 from clinic_app.services.appointments import (
     AppointmentError,
@@ -25,6 +25,9 @@ from clinic_app.services.i18n import T
 from clinic_app.services.security import require_permission
 from clinic_app.services.ui import render_page
 from clinic_app.services.errors import record_exception
+from clinic_app.extensions import csrf
+from clinic_app.services.csrf import ensure_csrf_token
+from flask_wtf.csrf import validate_csrf
 
 bp = Blueprint("appointments", __name__)
 
@@ -34,13 +37,15 @@ def _selected_day() -> str:
 
 
 _RANGE_PRESETS = {
+    "yesterday": -1,
     "today": 0,
+    "tomorrow": 1,
     "next3": 3,
     "next7": 7,
     "all": None,
 }
 
-_SHOW_PRESETS = {"upcoming", "past", "all"}
+_SHOW_PRESETS = {"scheduled", "done", "all"}
 
 
 def _resolve_range(day_str: str, key: str) -> tuple[str, str | None]:
@@ -59,18 +64,20 @@ def _search_query() -> str:
 
 def _range_choices() -> list[tuple[str, str]]:
     return [
-        ("today", T("appointments_range_today")),
-        ("next3", T("appointments_range_next3")),
-        ("next7", T("appointments_range_next7")),
-        ("all", T("appointments_range_all")),
+        ("yesterday", "Yesterday"),
+        ("today", "Today"),
+        ("tomorrow", "Tomorrow"),
+        ("next3", "Next 3 Days"),
+        ("next7", "Next 7 Days"),
+        ("all", "All Dates"),
     ]
 
 
 def _show_choices() -> list[tuple[str, str]]:
     return [
-        ("upcoming", T("appointments_show_upcoming")),
-        ("past", T("appointments_show_past")),
-        ("all", T("appointments_show_all")),
+        ("scheduled", "Scheduled"),
+        ("done", "Done"),
+        ("all", "All Status"),
     ]
 
 
@@ -157,11 +164,11 @@ def _group_table_appointments(appts: list[dict]) -> list[dict]:
 @bp.route("/appointments", methods=["GET"], endpoint="index")
 @require_permission("appointments:view")
 def appointments_entrypoint():
-    """Main appointments page - defaults to simplified view."""
+    """Main appointments page - defaults to table view."""
     try:
         day = _selected_day()
-        # Default to simplified view
-        return redirect(url_for("appointments.simple_view", day=day))
+        # Default to table view
+        return redirect(url_for("appointments.table", day=day))
     except Exception as exc:
         record_exception("appointments.index", exc)
         raise
@@ -174,6 +181,7 @@ def appointments_entrypoint():
 def appointments_simple_view():
     """Simplified appointments view - single, clean interface."""
     try:
+        print(f"DEBUG: Simple view called with args: {dict(request.args)}")
         day = _selected_day()
         doctor = request.args.get("doctor") or "all"
         search = _search_query()
@@ -182,6 +190,7 @@ def appointments_simple_view():
             show_mode = "upcoming"
 
         doctor_id = doctor if doctor != "all" else None
+        print(f"DEBUG: day={day}, doctor={doctor}, doctor_id={doctor_id}, search={search}, show_mode={show_mode}")
 
         # Calculate navigation dates
         try:
@@ -198,25 +207,36 @@ def appointments_simple_view():
             today = day
 
         try:
+            print("DEBUG: Calling list_for_day")
             appts = list_for_day(day, doctor_id=doctor_id, search=search or None, show=show_mode)
+            print(f"DEBUG: list_for_day returned {len(appts)} appointments")
             status_counts: dict[str, int] = {}
             for appt in appts:
                 status_counts[appt["status"]] = status_counts.get(appt["status"], 0) + 1
         except AppointmentError as exc:
+            print(f"DEBUG: AppointmentError: {exc}")
             flash(T(str(exc)), "err")
             appts = []
         except Exception as exc:
             # Handle unexpected errors gracefully
+            print(f"DEBUG: Exception in list_for_day: {exc}")
+            import traceback
+            traceback.print_exc()
             current_app.logger.error(f"Error listing appointments for day {day}: {exc}")
             flash("An error occurred while loading appointments. Please try again.", "err")
             appts = []
 
         try:
             doctors_list = doctor_choices()
+            print(f"DEBUG: doctor_choices returned {len(doctors_list)} doctors")
         except Exception as exc:
+            print(f"DEBUG: Exception in doctor_choices: {exc}")
+            import traceback
+            traceback.print_exc()
             current_app.logger.error(f"Error getting doctor choices: {exc}")
             doctors_list = []
 
+        print("DEBUG: About to call render_page")
         return render_page(
             "appointments/simple_view.html",
             day=day,
@@ -232,65 +252,182 @@ def appointments_simple_view():
             end_day=None,  # Simple view shows single day
         )
     except Exception as exc:
+        print(f"DEBUG: Exception in simple_view: {exc}")
+        import traceback
+        traceback.print_exc()
         record_exception("appointments.simple_view", exc)
         raise
 @bp.route("/appointments/table", methods=["GET"], endpoint="table")
 @require_permission("appointments:view")
 def appointments_table():
     try:
+        # Enhanced filtering and date grouping
         day = _selected_day()
         doctor = request.args.get("doctor") or "all"
-        range_key = request.args.get("range") or "today"
+        range_key = request.args.get("range") or "today"  # Default to today
         search = _search_query()
-        show_mode = (request.args.get("show") or "upcoming").lower()
+        show_mode = (request.args.get("show") or "all").lower()  # Default to all status
+        date_from = request.args.get("date_from")
+        date_to = request.args.get("date_to")
+        is_range = request.args.get("is_range") == "true"
+
         if show_mode not in _SHOW_PRESETS:
-            show_mode = "upcoming"
-        doctor_id = doctor if doctor != "all" else None
-        range_key, end_day = _resolve_range(day, range_key)
-        range_label = _choice_label(range_key, _range_choices(), T("appointments_range_today"))
-        show_label = _choice_label(show_mode, _show_choices(), T("appointments_show_upcoming"))
+            show_mode = "all"
+
+        print(f"DEBUG: Table route - day={day}, doctor={doctor}, range={range_key}, search={search}, show={show_mode}")
+
+        # Get doctors list and colors
         try:
-            appts = list_for_day(day, doctor_id=doctor_id, end_day=end_day, search=search or None, show=show_mode)
-            status_counts: dict[str, int] = {}
-            for appt in appts:
-                status_counts[appt["status"]] = status_counts.get(appt["status"], 0) + 1
-            stats = [
-                ("appointments_total_label", len(appts)),
-                ("appointment_status_scheduled", status_counts.get("scheduled", 0)),
-                ("appointment_status_done", status_counts.get("done", 0)),
-            ]
-        except AppointmentError as exc:
-            flash(T(str(exc)), "err")
+            doctors_list = doctor_choices()
+            doctor_colors = get_doctor_colors()
+        except Exception as e:
+            print(f"DEBUG: Error getting doctors: {e}")
+            doctors_list = []
+            doctor_colors = {}
+
+        # Determine date range for filtering
+        filter_start_date = None
+        filter_end_date = None
+
+        if range_key == "today":
+            filter_start_date = day
+            filter_end_date = day
+        elif range_key == "yesterday":
+            yesterday = (date.fromisoformat(day) - timedelta(days=1)).isoformat()
+            filter_start_date = yesterday
+            filter_end_date = yesterday
+        elif range_key == "tomorrow":
+            tomorrow = (date.fromisoformat(day) + timedelta(days=1)).isoformat()
+            filter_start_date = tomorrow
+            filter_end_date = tomorrow
+        elif range_key == "next3":
+            filter_start_date = day
+            filter_end_date = (date.fromisoformat(day) + timedelta(days=3)).isoformat()
+        elif range_key == "next7":
+            filter_start_date = day
+            filter_end_date = (date.fromisoformat(day) + timedelta(days=7)).isoformat()
+        elif range_key == "custom":
+            if is_range and date_from and date_to:
+                filter_start_date = date_from
+                filter_end_date = date_to
+            elif date_from:
+                filter_start_date = date_from
+                filter_end_date = date_from
+
+        # Get appointments with enhanced filtering
+        try:
+            # Get appointments based on date range first
+            if range_key == "all":
+                # For "all dates", get all appointments without date filtering
+                appts = list_for_day("2000-01-01", doctor_id=doctor if doctor != "all" else None,
+                                   end_day="2030-12-31", search=search or None, show="all")
+            else:
+                appts = list_for_day(filter_start_date, doctor_id=doctor if doctor != "all" else None,
+                                   end_day=filter_end_date, search=search or None, show="all")
+
+            # Apply status filter manually (since list_for_day only supports time-based filtering)
+            if show_mode == "scheduled":
+                appts = [appt for appt in appts if appt.get("status") == "scheduled"]
+            elif show_mode == "done":
+                appts = [appt for appt in appts if appt.get("status") == "done"]
+            # For "all", keep all appointments
+
+            print(f"DEBUG: Got {len(appts)} appointments after filtering")
+        except Exception as e:
+            print(f"DEBUG: Error getting appointments: {e}")
             appts = []
-            stats = []
-        doctor_colors = get_doctor_colors()
-        try:
-            date_cards = get_date_cards_for_range(day, end_day or None, doctor if doctor != "all" else None)
-        except AppointmentError:
-            date_cards = []
+
+        # Group appointments by date
+        appointments_by_date = {}
+        for appt in appts:
+            if appt.get('starts_at'):
+                date_key = appt['starts_at'][:10]  # YYYY-MM-DD
+                if date_key not in appointments_by_date:
+                    appointments_by_date[date_key] = []
+                appointments_by_date[date_key].append(appt)
+
+        # Sort dates and prepare date groups
+        date_groups = []
+        for date_key in sorted(appointments_by_date.keys()):
+            appointments = appointments_by_date[date_key]
+
+            # Sort appointments within each date by time (earliest to latest)
+            # Use proper datetime parsing to ensure correct AM/PM handling
+            def time_sort_key(appt):
+                starts_at = appt.get('starts_at', '')
+                if starts_at:
+                    try:
+                        # Parse the full datetime string for accurate sorting
+                        dt = datetime.fromisoformat(starts_at.replace('Z', '+00:00'))
+                        return dt.time()  # Sort by time of day only
+                    except (ValueError, AttributeError):
+                        return starts_at  # Fall back to string sorting
+                return ''
+
+            appointments.sort(key=time_sort_key)
+            print(f"DEBUG: After sorting {len(appointments)} appointments for {date_key}:")
+            for i, appt in enumerate(appointments):
+                starts_at = appt.get('starts_at', '')
+                time_display = starts_at[11:16] if len(starts_at) > 16 else starts_at
+                hour = int(time_display[:2]) if time_display else 0
+                ampm = 'AM' if hour < 12 else 'PM'
+                display_hour = hour if hour == 0 else (hour - 12 if hour > 12 else hour)
+                display_hour = 12 if display_hour == 0 else display_hour
+                print(f"DEBUG:   {i+1}. {time_display} ({display_hour}:00 {ampm}) - {appt.get('title', 'No title')}")
+
+            # Count by status
+            status_counts = {'scheduled': 0, 'done': 0, 'total': len(appointments)}
+            for appt in appointments:
+                status = appt.get('status', 'scheduled')
+                if status in status_counts:
+                    status_counts[status] += 1
+
+            # Format date display
+            try:
+                date_obj = date.fromisoformat(date_key)
+                today = date.today()
+                if date_key == today.isoformat():
+                    date_display = "Today"
+                elif date_key == (today - timedelta(days=1)).isoformat():
+                    date_display = "Yesterday"
+                elif date_key == (today + timedelta(days=1)).isoformat():
+                    date_display = "Tomorrow"
+                else:
+                    date_display = date_obj.strftime("%B %d, %Y")
+            except:
+                date_display = date_key
+
+            date_groups.append({
+                'date': date_key,
+                'display': date_display,
+                'appointments': appointments,
+                'counts': status_counts,
+                'is_today': date_key == date.today().isoformat()
+            })
+
+        # Sort date groups chronologically (past to future) for all ranges
+        date_groups.sort(key=lambda group: group['date'])
+
         return render_page(
             "appointments/table_view_pro.html",
             day=day,
             doctor=doctor,
-            doctors=[("all", T("appointments_doctor_all"))] + doctor_choices(),
-            appts=appts,
-            stats=stats,
+            doctors=[("all", "All Doctors")] + doctors_list,
+            date_groups=date_groups,
+            doctor_colors=doctor_colors,
             selected_doctor=doctor,
+            selected_range=range_key,
             selected_show=show_mode,
             show_choices=_show_choices(),
-            selected_show_label=show_label,
-            show_mode=show_mode,
             search_query=search,
-            selected_range=range_key,
-            range_choices=_range_choices(),
-            range_label=range_label,
-            end_day=end_day,
-            date_cards=date_cards,
-            doctor_colors=doctor_colors,
-            current_view="table",
-            show_back=True,
+            date_from=date_from,
+            date_to=date_to,
+            is_range=is_range,
         )
     except Exception as exc:
+        print(f"DEBUG: Exception in table route: {exc}")
+        import traceback
+        traceback.print_exc()
         record_exception("appointments.table", exc)
         raise
 
@@ -423,9 +560,8 @@ def change_status(appt_id):
         print(f"DEBUG: Status change request for appointment {appt_id}")
         print(f"DEBUG: Request method: {request.method}")
         print(f"DEBUG: Request form data: {dict(request.form)}")
-        print(f"DEBUG: Request headers: {dict(request.headers)}")
 
-        new_status = (request.form.get("status") or request.json.get("status") if request.is_json else None) or "scheduled"
+        new_status = request.form.get("status") or "scheduled"
         print(f"DEBUG: New status: {new_status}")
 
         try:
@@ -445,6 +581,8 @@ def change_status(appt_id):
         return redirect(request.form.get("next") or url_for("appointments.index"))
     except Exception as exc:
         print(f"DEBUG: Exception in status change: {exc}")
+        import traceback
+        traceback.print_exc()
         record_exception("appointments.status", exc)
         wants_json = request.is_json or "application/json" in (request.headers.get("Accept") or "")
         if wants_json:

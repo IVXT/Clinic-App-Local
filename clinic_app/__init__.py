@@ -6,7 +6,8 @@ import os
 from pathlib import Path
 from datetime import timedelta
 
-from flask import Flask
+from flask import Flask, jsonify
+from flask_wtf.csrf import CSRFError
 
 from .blueprints import register_blueprints
 from .extensions import init_extensions
@@ -115,6 +116,18 @@ def create_app() -> Flask:
     ensure_admin_exists()
     init_security(app)
     register_cli(app)
+
+    # Add CSRF error handling to catch CSRF validation failures
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        print(f"CSRF ERROR: {e}")
+        return jsonify({"success": False, "errors": [f"CSRF validation failed: {str(e)}"]}), 400
+
+    # Add general error handler to log all 400s that don't reach routes
+    @app.errorhandler(400)
+    def handle_bad_request(e):
+        print(f"BAD REQUEST ERROR: {e}")
+        return jsonify({"success": False, "errors": ["Bad request - check request format and CSRF token"]}), 400
 
     return app
 

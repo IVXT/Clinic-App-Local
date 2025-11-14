@@ -25,7 +25,7 @@
   }
 
   async function updateStatus(targetEl, desiredStatus) {
-    if (!targetEl) return;
+    console.log('updateStatus called', targetEl, desiredStatus);
     const toggle = targetEl.classList && targetEl.classList.contains('status-toggle') ? targetEl : targetEl.closest('.status-toggle');
     const control = toggle || targetEl;
     if (!control) return;
@@ -110,8 +110,10 @@
   }
 
   document.addEventListener('click', (e) => {
+    console.log('Click detected', e.target);
     const option = e.target.closest('[data-status-choice]');
     if (option) {
+      console.log('Status option clicked', option);
       e.preventDefault();
       const container = option.closest('.status-toggle');
       if (!container) return;

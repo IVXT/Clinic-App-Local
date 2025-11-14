@@ -1,0 +1,1196 @@
+{% extends '_base.html' %}
+{% block content %}
+<style>
+/* Admin Settings Styles */
+.admin-settings-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.admin-settings-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.admin-settings-header h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.admin-settings-header p {
+  margin: 0.5rem 0 0 0;
+  opacity: 0.9;
+  font-size: 1.1rem;
+}
+
+/* Tab Navigation */
+.admin-tabs {
+  display: flex;
+  background: white;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 0;
+}
+
+.admin-tab {
+  flex: 1;
+  padding: 1rem 1.5rem;
+  text-align: center;
+  background: #f8fafc;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: none;
+  display: block;
+}
+
+.admin-tab:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.admin-tab.active {
+  background: white;
+  color: #1e293b;
+  border-bottom-color: #3b82f6;
+}
+
+/* Tab Content */
+.admin-tab-content {
+  background: white;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  min-height: 600px;
+}
+
+.admin-tab-pane {
+  display: none;
+}
+
+.admin-tab-pane.active {
+  display: block;
+}
+
+/* Common Styles */
+.card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.btn-secondary {
+  background: white;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.btn-secondary:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.btn-success {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+.btn-success:hover {
+  background: #059669;
+  border-color: #059669;
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.btn-sm {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Table Styles */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+}
+
+.admin-table tr:hover {
+  background: #f9fafb;
+}
+
+.admin-table tr.protected {
+  background: #fef3c7;
+}
+
+.admin-table tr.protected:hover {
+  background: #fde68a;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge.active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-badge.admin {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Doctor Colors Styles */
+.color-preview {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+}
+
+.color-input {
+  width: 60px;
+  height: 40px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 4px;
+}
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.active {
+  display: flex;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-footer {
+  padding: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* Form Styles */
+.admin-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.form-input,
+.form-select {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-checkbox-group {
+  display: grid;
+  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.checkbox-group-title {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Permission Groups */
+.permission-groups {
+  display: grid;
+  gap: 1rem;
+}
+
+.permission-group {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.permission-group-title {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.permission-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+/* Alert Styles */
+.alert {
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.alert-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.alert-success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+/* Loading States */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+  position: relative;
+}
+
+.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid #3b82f6;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .admin-settings-container {
+    padding: 1rem;
+  }
+
+  .admin-settings-header {
+    padding: 1.5rem;
+  }
+
+  .admin-settings-header h1 {
+    font-size: 2rem;
+  }
+
+  .admin-tabs {
+    flex-direction: column;
+  }
+
+  .admin-tab {
+    border-bottom: 1px solid #e2e8f0;
+    border-right: none;
+  }
+
+  .admin-tab.active {
+    border-bottom-color: #3b82f6;
+    border-right: none;
+  }
+
+  .admin-tab-content {
+    padding: 1rem;
+  }
+
+  .admin-table {
+    font-size: 0.875rem;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 0.5rem;
+  }
+
+  .modal-content {
+    width: 95%;
+    margin: 1rem;
+  }
+
+  .modal-footer {
+    flex-direction: column;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+  }
+}
+</style>
+
+<div class="admin-settings-container">
+  <!-- Header -->
+  <div class="admin-settings-header">
+    <h1>Admin Settings</h1>
+    <p>Manage users, roles, permissions, and doctor colors</p>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="admin-tabs">
+    <button class="admin-tab active" onclick="switchTab(event, 'users')">
+      👥 Manage Users
+    </button>
+    <button class="admin-tab" onclick="switchTab(event, 'roles')">
+      🛡️ Roles & Permissions
+    </button>
+    <button class="admin-tab" onclick="switchTab(event, 'colors')">
+      🎨 Doctor Colors
+    </button>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="admin-tab-content">
+    <!-- Users Tab -->
+    <div id="users-tab" class="admin-tab-pane active">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Users</h2>
+          <button class="btn btn-primary" onclick="openUserModal()">
+            + New User
+          </button>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Roles</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body">
+              {% for user in users %}
+              <tr class="{% if user.username == 'admin' or user.id.startswith('admin-') %}protected{% endif %}" data-user-id="{{ user.id }}">
+                <td>{{ user.username }}</td>
+                <td>{{ user.full_name or '—' }}</td>
+                <td>{{ user.phone or '—' }}</td>
+                <td>
+                  {% if user.roles %}
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                      {% for role in user.roles %}
+                        <span class="status-badge {% if role.name == 'Admin' %}admin{% endif %}">{{ role.name }}</span>
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="status-badge {% if user.is_active %}active{% else %}inactive{% endif %}">
+                    {{ 'Active' if user.is_active else 'Disabled' }}
+                  </span>
+                </td>
+                <td style="white-space: nowrap;">
+                  <button class="btn btn-secondary btn-sm" onclick="editUser('{{ user.id }}')">Edit</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteUser('{{ user.id }}', '{{ user.username }}')">Delete</button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Roles Tab -->
+    <div id="roles-tab" class="admin-tab-pane">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Roles & Permissions</h2>
+          <button class="btn btn-primary" onclick="openRoleModal()">
+            + New Role
+          </button>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Role Name</th>
+                <th>Description</th>
+                <th>Permissions</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="roles-table-body">
+              {% for role in roles %}
+              <tr data-role-id="{{ role.id }}">
+                <td>{{ role.name }}</td>
+                <td>{{ role.description or '—' }}</td>
+                <td>
+                  {% if role.permissions %}
+                    <span class="status-badge">{{ role.permissions|length }} permissions</span>
+                  {% else %}
+                    <span class="status-badge inactive">No permissions</span>
+                  {% endif %}
+                </td>
+                <td style="white-space: nowrap;">
+                  <button class="btn btn-secondary btn-sm" onclick="editRole({{ role.id }})">Edit</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteRole({{ role.id }}, '{{ role.name }}')">Delete</button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colors Tab -->
+    <div id="colors-tab" class="admin-tab-pane">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Doctor Colors</h2>
+          <button class="btn btn-secondary" onclick="resetColors()">
+            Reset to Defaults
+          </button>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Doctor</th>
+                <th>Current Color</th>
+                <th>Preview</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="colors-table-body">
+              {% for doctor in doctors %}
+              <tr data-doctor-id="{{ doctor.doctor_id }}">
+                <td>{{ doctor.doctor_label }}</td>
+                <td><code>{{ doctor.color|upper }}</code></td>
+                <td>
+                  <div class="color-preview" style="background-color: {{ doctor.color }};"></div>
+                </td>
+                <td>
+                  <input type="color" value="{{ doctor.color }}" class="color-input" onchange="updateColor('{{ doctor.doctor_id }}', this.value)">
+                  <button class="btn btn-primary btn-sm" onclick="saveColor('{{ doctor.doctor_id }}')">Save</button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- User Modal -->
+<div id="user-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="user-modal-title" class="modal-title">Create User</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="user-alert" class="alert alert-error" style="display: none;"></div>
+      <form id="user-form" class="admin-form">
+        <input type="hidden" id="user-id" name="user_id">
+
+        <div class="form-group">
+          <label class="form-label">Username *</label>
+          <input type="text" id="user-username" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" id="user-full-name" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="tel" id="user-phone" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password *</label>
+          <input type="password" id="user-password" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Roles</label>
+          <div class="form-checkbox-group">
+            {% for role in roles %}
+            <div class="checkbox-item">
+              <input type="checkbox" id="role-{{ role.id }}" value="{{ role.id }}">
+              <label for="role-{{ role.id }}">{{ role.name }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-item">
+            <input type="checkbox" id="user-active" checked>
+            <span>Active</span>
+          </label>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button id="user-submit-btn" class="btn btn-primary" onclick="saveUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Role Modal -->
+<div id="role-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="role-modal-title" class="modal-title">Create Role</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="role-alert" class="alert alert-error" style="display: none;"></div>
+      <form id="role-form" class="admin-form">
+        <input type="hidden" id="role-id" name="role_id">
+
+        <div class="form-group">
+          <label class="form-label">Role Name *</label>
+          <input type="text" id="role-name" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input type="text" id="role-description" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Permissions</label>
+          <div class="permission-groups">
+            {% for group_name, group_permissions in permissions.items() %}
+            <div class="permission-group">
+              <div class="permission-group-title">{{ group_name }}</div>
+              <div class="permission-list">
+                {% for perm in group_permissions %}
+                <div class="checkbox-item">
+                  <input type="checkbox" id="perm-{{ perm.id }}" value="{{ perm.id }}">
+                  <label for="perm-{{ perm.id }}" title="{{ perm.description or perm.code }}">{{ perm.code }}</label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button id="role-submit-btn" class="btn btn-primary" onclick="saveRole()">Create Role</button>
+    </div>
+  </div>
+</div>
+
+// Get CSRF token from meta tag
+<script>
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+// Global variables
+let currentUserId = null;
+let currentRoleId = null;
+let colorChanges = {};
+
+// Tab switching functionality
+function switchTab(evt, tabName) {
+  // Update tab buttons
+  document.querySelectorAll('.admin-tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  const trigger = (evt && (evt.currentTarget || evt.target)) || null;
+  if (trigger) {
+    trigger.classList.add('active');
+  }
+
+  // Update tab content
+  document.querySelectorAll('.admin-tab-pane').forEach(pane => {
+    pane.classList.remove('active');
+  });
+
+  const targetPane = document.getElementById(tabName + '-tab');
+  if (targetPane) {
+    targetPane.classList.add('active');
+  }
+}
+
+// Modal functions
+function openUserModal(userId = null) {
+  currentUserId = userId;
+  const modal = document.getElementById('user-modal');
+  const title = document.getElementById('user-modal-title');
+  const submitBtn = document.getElementById('user-submit-btn');
+  const alert = document.getElementById('user-alert');
+
+  alert.style.display = 'none';
+
+  if (userId) {
+    title.textContent = 'Edit User';
+    submitBtn.textContent = 'Update User';
+    loadUserData(userId);
+  } else {
+    title.textContent = 'Create User';
+    submitBtn.textContent = 'Create User';
+    document.getElementById('user-form').reset();
+    document.getElementById('user-active').checked = true;
+  }
+
+  modal.classList.add('active');
+}
+
+function openRoleModal(roleId = null) {
+  currentRoleId = roleId;
+  const modal = document.getElementById('role-modal');
+  const title = document.getElementById('role-modal-title');
+  const submitBtn = document.getElementById('role-submit-btn');
+  const alert = document.getElementById('role-alert');
+
+  alert.style.display = 'none';
+
+  if (roleId) {
+    title.textContent = 'Edit Role';
+    submitBtn.textContent = 'Update Role';
+    loadRoleData(roleId);
+  } else {
+    title.textContent = 'Create Role';
+    submitBtn.textContent = 'Create Role';
+    document.getElementById('role-form').reset();
+  }
+
+  modal.classList.add('active');
+}
+
+function closeModal() {
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.classList.remove('active');
+  });
+  currentUserId = null;
+  currentRoleId = null;
+}
+
+// User functions
+async function saveUser() {
+  const submitBtn = document.getElementById('user-submit-btn');
+  const alert = document.getElementById('user-alert');
+
+  const userData = {
+    username: document.getElementById('user-username').value.trim(),
+    full_name: document.getElementById('user-full-name').value.trim(),
+    phone: document.getElementById('user-phone').value.trim(),
+    password: document.getElementById('user-password').value,
+    roles: Array.from(document.querySelectorAll('#user-form input[type="checkbox"]:checked')).map(cb => parseInt(cb.value)),
+    is_active: document.getElementById('user-active').checked
+  };
+
+  if (currentUserId) {
+    userData.user_id = currentUserId;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Saving...';
+
+  try {
+    console.log('DEBUG: Sending user data:', userData);  // Debug logging
+    const response = await fetch(currentUserId ? `/admin/settings/users/${currentUserId}/update` : '/admin/settings/users/create', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      body: JSON.stringify(userData)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      closeModal();
+      location.reload(); // Refresh to show updated data
+    } else {
+      alert.textContent = result.errors.join(', ');
+      alert.style.display = 'block';
+    }
+  } catch (error) {
+    alert.textContent = 'An error occurred. Please try again.';
+    alert.style.display = 'block';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = currentUserId ? 'Update User' : 'Create User';
+  }
+}
+
+async function loadUserData(userId) {
+  try {
+    const response = await fetch(`/admin/settings/users/${userId}`, { credentials: 'same-origin' });
+    const result = await response.json();
+
+    if (result.success) {
+      const user = result.user;
+      document.getElementById('user-username').value = user.username;
+      document.getElementById('user-full-name').value = user.full_name || '';
+      document.getElementById('user-phone').value = user.phone || '';
+      document.getElementById('user-active').checked = Boolean(user.is_active);
+
+      // Clear all role checkboxes
+      document.querySelectorAll('#user-form input[type="checkbox"]').forEach(cb => {
+        cb.checked = false;
+      });
+
+      // Check the user's roles
+      user.roles.forEach(roleId => {
+        const checkbox = document.getElementById(`role-${roleId}`);
+        if (checkbox) {
+          checkbox.checked = true;
+        }
+      });
+    } else {
+      alert('Error loading user data: ' + result.errors.join(', '));
+    }
+  } catch (error) {
+    alert('Error loading user data');
+  }
+}
+
+async function editUser(userId) {
+  openUserModal(userId);
+}
+
+async function deleteUser(userId, username) {
+  if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
+    return;
+  }
+
+try {
+    const response = await fetch(`/admin/settings/users/${userId}/delete`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      body: JSON.stringify({})
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      location.reload();
+    } else {
+      alert('Error: ' + result.errors.join(', '));
+    }
+  } catch (error) {
+    alert('An error occurred. Please try again.');
+  }
+}
+
+// Role functions
+async function saveRole() {
+  const submitBtn = document.getElementById('role-submit-btn');
+  const alert = document.getElementById('role-alert');
+
+  const roleData = {
+    name: document.getElementById('role-name').value.trim(),
+    description: document.getElementById('role-description').value.trim(),
+    permissions: Array.from(document.querySelectorAll('#role-form input[type="checkbox"]:checked')).map(cb => parseInt(cb.value))
+  };
+
+  if (currentRoleId) {
+    roleData.role_id = currentRoleId;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Saving...';
+
+try {
+    const response = await fetch(currentRoleId ? `/admin/settings/roles/${currentRoleId}/update` : '/admin/settings/roles/create', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      body: JSON.stringify(roleData)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      closeModal();
+      location.reload();
+    } else {
+      alert.textContent = result.errors.join(', ');
+      alert.style.display = 'block';
+    }
+  } catch (error) {
+    alert.textContent = 'An error occurred. Please try again.';
+    alert.style.display = 'block';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = currentRoleId ? 'Update Role' : 'Create Role';
+  }
+}
+
+async function loadRoleData(roleId) {
+  try {
+    const response = await fetch(`/admin/settings/roles/${roleId}`, { credentials: 'same-origin' });
+    const result = await response.json();
+
+    if (result.success) {
+      const role = result.role;
+      document.getElementById('role-name').value = role.name;
+      document.getElementById('role-description').value = role.description || '';
+
+      // Clear all permission checkboxes
+      document.querySelectorAll('#role-form input[type="checkbox"]').forEach(cb => {
+        cb.checked = false;
+      });
+
+      // Check the role's permissions
+      role.permissions.forEach(permId => {
+        const checkbox = document.getElementById(`perm-${permId}`);
+        if (checkbox) {
+          checkbox.checked = true;
+        }
+      });
+    } else {
+      alert('Error loading role data: ' + result.errors.join(', '));
+    }
+  } catch (error) {
+    alert('Error loading role data');
+  }
+}
+
+async function editRole(roleId) {
+  openRoleModal(roleId);
+}
+
+async function deleteRole(roleId, roleName) {
+  if (!confirm(`Are you sure you want to delete role "${roleName}"?`)) {
+    return;
+  }
+
+try {
+    const response = await fetch(`/admin/settings/roles/${roleId}/delete`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      body: JSON.stringify({})
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      location.reload();
+    } else {
+      alert('Error: ' + result.errors.join(', '));
+    }
+  } catch (error) {
+    alert('An error occurred. Please try again.');
+  }
+}
+
+// Color functions
+function updateColor(doctorId, color) {
+  colorChanges[doctorId] = color;
+  // Update preview
+  const row = document.querySelector(`tr[data-doctor-id="${doctorId}"]`);
+  if (row) {
+    const preview = row.querySelector('.color-preview');
+    if (preview) {
+      preview.style.backgroundColor = color;
+    }
+  }
+}
+
+async function saveColor(doctorId) {
+  const color = colorChanges[doctorId];
+  if (!color) return;
+
+try {
+    const response = await fetch('/admin/settings/colors/update', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      body: JSON.stringify({ doctor_id: doctorId, color: color })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      delete colorChanges[doctorId];
+      // Update the displayed color code
+      const row = document.querySelector(`tr[data-doctor-id="${doctorId}"]`);
+      if (row) {
+        const codeElement = row.querySelector('code');
+        if (codeElement) {
+          codeElement.textContent = color.toUpperCase();
+        }
+      }
+    } else {
+      alert('Error: ' + (result.errors ? result.errors.join(', ') : 'Unknown error'));
+    }
+  } catch (error) {
+    alert('An error occurred. Please try again.');
+  }
+}
+
+async function resetColors() {
+  if (!confirm('Are you sure you want to reset all doctor colors to defaults?')) {
+    return;
+  }
+
+try {
+    const response = await fetch('/admin/settings/colors/reset', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      body: JSON.stringify({})
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      location.reload();
+    } else {
+      alert('Error: ' + (result.errors ? result.errors.join(', ') : 'Unknown error'));
+    }
+  } catch (error) {
+    alert('An error occurred. Please try again.');
+  }
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(modal => {
+    if (event.target === modal) {
+      closeModal();
+    }
+  });
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeModal();
+  }
+});
+</script>
+
+{% endblock %}
