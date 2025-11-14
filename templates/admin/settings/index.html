@@ -233,6 +233,23 @@
   color: #92400e;
 }
 
+.status-badge.permission {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.status-badge.more {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.permission-badge-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  max-width: 420px;
+}
+
 /* Doctor Colors Styles */
 .color-preview {
   width: 30px;
@@ -576,6 +593,8 @@
                         <span class="status-badge {% if role.name == 'Admin' %}admin{% endif %}">{{ role.name }}</span>
                       {% endfor %}
                     </div>
+                  {% elif user.primary_role_name %}
+                    <span class="status-badge">{{ user.primary_role_name }}</span>
                   {% else %}
                     —
                   {% endif %}
@@ -623,8 +642,16 @@
                 <td>{{ role.name }}</td>
                 <td>{{ role.description or '—' }}</td>
                 <td>
-                  {% if role.permissions %}
-                    <span class="status-badge">{{ role.permissions|length }} permissions</span>
+                  {% set perms = role.permissions %}
+                  {% if perms %}
+                    <div class="permission-badge-group">
+                      {% for perm in perms[:6] %}
+                        <span class="status-badge permission" title="{{ perm.description or perm.code }}">{{ perm.code }}</span>
+                      {% endfor %}
+                      {% if perms|length > 6 %}
+                        <span class="status-badge more">+{{ perms|length - 6 }} more</span>
+                      {% endif %}
+                    </div>
                   {% else %}
                     <span class="status-badge inactive">No permissions</span>
                   {% endif %}
@@ -793,7 +820,8 @@
 
 // Get CSRF token from meta tag
 <script>
-const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+const csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
+const CSRF_TOKEN = csrfMetaTag ? (csrfMetaTag.getAttribute('content') || '') : '';
 // Global variables
 let currentUserId = null;
 let currentRoleId = null;
@@ -879,13 +907,18 @@ function closeModal() {
 async function saveUser() {
   const submitBtn = document.getElementById('user-submit-btn');
   const alert = document.getElementById('user-alert');
+  const selectedRoles = Array.from(
+    document.querySelectorAll('#user-form .form-checkbox-group input[type="checkbox"]:checked')
+  )
+    .map(cb => parseInt(cb.value, 10))
+    .filter(value => !isNaN(value));
 
   const userData = {
     username: document.getElementById('user-username').value.trim(),
     full_name: document.getElementById('user-full-name').value.trim(),
     phone: document.getElementById('user-phone').value.trim(),
     password: document.getElementById('user-password').value,
-    roles: Array.from(document.querySelectorAll('#user-form input[type="checkbox"]:checked')).map(cb => parseInt(cb.value)),
+    roles: selectedRoles,
     is_active: document.getElementById('user-active').checked
   };
 
@@ -936,12 +969,13 @@ async function loadUserData(userId) {
       document.getElementById('user-username').value = user.username;
       document.getElementById('user-full-name').value = user.full_name || '';
       document.getElementById('user-phone').value = user.phone || '';
-      document.getElementById('user-active').checked = Boolean(user.is_active);
+      document.getElementById('user-password').value = '';
 
       // Clear all role checkboxes
-      document.querySelectorAll('#user-form input[type="checkbox"]').forEach(cb => {
+      document.querySelectorAll('#user-form .form-checkbox-group input[type="checkbox"]').forEach(cb => {
         cb.checked = false;
       });
+      document.getElementById('user-active').checked = Boolean(user.is_active);
 
       // Check the user's roles
       user.roles.forEach(roleId => {

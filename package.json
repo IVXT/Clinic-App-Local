@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@byterover/cipher": "^0.3.0"
+  }
+}
