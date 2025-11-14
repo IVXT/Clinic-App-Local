@@ -13,12 +13,8 @@ from clinic_app.services.appointments import (
     list_for_day,
     update_appointment,
     update_status,
-    format_time_range,
-    get_multi_doctor_schedule,
-    get_date_cards_for_range,
-    auto_generate_time_slot,
-    validate_time_slot_overlap,
-    get_consecutive_slots,
+    delete_appointment,
+    get_appointment_by_id,
 )
 from clinic_app.services.doctor_colors import get_doctor_colors
 from clinic_app.services.i18n import T
@@ -28,6 +24,8 @@ from clinic_app.services.errors import record_exception
 from clinic_app.extensions import csrf
 from clinic_app.services.csrf import ensure_csrf_token
 from flask_wtf.csrf import validate_csrf
+import json
+from datetime import date, datetime, timedelta
 
 bp = Blueprint("appointments", __name__)
 
@@ -683,141 +681,234 @@ def edit_appointment(appt_id):
         return redirect(url_for("appointments.index"))
 
 
-@bp.route("/appointments/multi-doctor", methods=["GET"], endpoint="multi_doctor")
+
+
+
+# Vanilla appointments template route
+@bp.route("/appointments/vanilla", methods=["GET"], endpoint="vanilla")
 @require_permission("appointments:view")
-def appointments_multi_doctor():
-    """Clean multi-doctor view showing all doctors' schedules side by side."""
+def appointments_vanilla():
+    """Serve vanilla appointments template with data injection."""
     try:
-        day = _selected_day()
-        range_key = request.args.get("range") or "today"
-        search = _search_query()
-        show_mode = (request.args.get("show") or "upcoming").lower()
-        if show_mode not in _SHOW_PRESETS:
-            show_mode = "upcoming"
-        range_key, end_day = _resolve_range(day, range_key)
-        range_label = _choice_label(range_key, _range_choices(), T("appointments_range_today"))
-        show_label = _choice_label(show_mode, _show_choices(), T("appointments_show_upcoming"))
-        all_appointments = get_multi_doctor_schedule(day, end_day, search or None, show_mode)
+        # Get current date and appointments
+        today = datetime.now().strftime("%Y-%m-%d")
+        appointments = list_for_day(today, show="all")
+        doctors = doctor_choices()
         doctor_colors = get_doctor_colors()
+
+        # Get patients for search using direct database query
+        from clinic_app.services.database import db
+
+        conn = db()
         try:
-            date_cards = get_date_cards_for_range(day, end_day or None, None)
-        except AppointmentError:
-            date_cards = []
+            patients_rows = conn.execute("""
+                SELECT id, short_id, full_name, phone
+                FROM patients
+                ORDER BY full_name
+                LIMIT 100
+            """).fetchall()
+            conn.close()
+        except:
+            patients_rows = []
+            if 'conn' in locals():
+                conn.close()
 
+        # Format appointments for template
+        formatted_appts = []
+        for appt in appointments:
+            formatted_appts.append({
+                "id": appt["id"],
+                "patientName": appt.get("patient_name", ""),
+                "fileNumber": appt.get("patient_short_id", ""),
+                "phoneNumber": appt.get("patient_phone", ""),
+                "doctor": appt.get("doctor_label", ""),
+                "startTime": appt.get("starts_at", ""),
+                "endTime": appt.get("ends_at", ""),
+                "status": appt.get("status", "scheduled"),
+                "reason": appt.get("title", ""),
+            })
+
+        # Format patients for template
+        formatted_patients = []
+        for patient in patients_rows:
+            formatted_patients.append({
+                "fileNumber": patient["short_id"] or "",
+                "name": patient["full_name"] or "",
+                "phoneNumber": patient["phone"] or "",
+                "id": patient["id"],
+            })
+
+        # Format doctors for template (with colors)
+        formatted_doctors = []
+        for doc_id, doc_name in doctors:
+            formatted_doctors.append({
+                "id": doc_id,
+                "name": doc_name,
+                "color": doctor_colors.get(doc_id, doctor_colors.get("default", "#6B7280")),
+            })
+
+        # Render the template with injected data
         return render_page(
-            "appointments/multi_doctor_pro.html",
-            day=day,
-            end_day=end_day,
-            all_appointments=all_appointments,
-            doctor_colors=doctor_colors,
-            selected_range=range_key,
-            range_label=range_label,
-            range_choices=_range_choices(),
-            selected_show=show_mode,
-            selected_show_label=show_label,
-            show_choices=_show_choices(),
-            search_query=search,
-            date_cards=date_cards,
-            current_view="multidoctor",
-            show_back=True,
+            "appointments/vanilla.html",
+            appointments_json=json.dumps(formatted_appts),
+            patients_json=json.dumps(formatted_patients),
+            doctors_json=json.dumps(formatted_doctors),
         )
+
     except Exception as exc:
-        record_exception("appointments.multi_doctor", exc)
-        raise
+        record_exception("appointments.vanilla", exc)
+        return f"Error: {str(exc)}", 500
 
 
-# API endpoints for enhanced functionality
-
-@bp.route("/api/appointments/consecutive-slots", methods=["GET"], endpoint="api_consecutive_slots")
-@require_permission("appointments:view")
-def api_consecutive_slots():
-    """API endpoint to get consecutive available time slots for a doctor."""
+# API endpoints for vanilla template
+@csrf.exempt
+@bp.route("/api/patients/search", methods=["GET"])
+@require_permission("patients:view")
+def api_search_patients():
+    """Search patients by name, file number or phone."""
     try:
-        doctor_id = request.args.get("doctor_id")
-        day = request.args.get("day")
-        start_time = request.args.get("start_time", "09:00")
-        count = int(request.args.get("count", 3))
+        query = request.args.get('q', '').strip()
+        if len(query) < 2:
+            return jsonify([]), 200
 
-        if not doctor_id or not day:
-            return jsonify({"error": "doctor_id and day are required"}), 400
+        # Search in database
+        from clinic_app.services.database import db
 
-        slots = get_consecutive_slots(doctor_id, day, start_time, count)
-        return jsonify({"slots": slots})
+        conn = db()
+        try:
+            rows = conn.execute("""
+                SELECT id, short_id, full_name, phone
+                FROM patients
+                WHERE LOWER(full_name) LIKE LOWER(?)
+                   OR LOWER(short_id) LIKE LOWER(?)
+                   OR phone LIKE ?
+                ORDER BY full_name
+                LIMIT 10
+            """, (f'%{query}%', f'%{query}%', f'%{query}%')).fetchall()
+            conn.close()
+        except:
+            if 'conn' in locals():
+                conn.close()
+            rows = []
+
+        # Convert to JSON format expected by frontend
+        results = []
+        for row in rows:
+            results.append({
+                'id': row['id'],
+                'name': row['full_name'],
+                'fileNumber': row['short_id'],
+                'phoneNumber': row['phone']
+            })
+
+        return jsonify(results), 200
+
     except Exception as exc:
-        record_exception("api.consecutive_slots", exc)
+        record_exception("api.patients.search", exc)
+        return jsonify({"error": "Internal server error"}), 500
+
+@csrf.exempt
+@bp.route("/api/appointments/add", methods=["POST"])
+@require_permission("appointments:edit")
+def api_add_appointment():
+    """API endpoint to add new appointment."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        # Map template fields to service fields
+        form_data = {
+            "day": data.get("startTime", datetime.now().strftime("%Y-%m-%d"))[:10],
+            "start_time": data.get("startTime", "")[11:16] if len(data.get("startTime", "")) > 11 else "09:00",
+            "doctor_id": data.get("doctor", ""),
+            "title": data.get("reason", ""),
+            "patient_id": data.get("patient_id"),
+            "patient_name": data.get("patientName"),
+            "patient_phone": data.get("phoneNumber"),
+        }
+
+        appt_id = create_appointment(form_data, actor_id=getattr(g.current_user, "id", None))
+        return jsonify({"id": appt_id, "status": "created"}), 201
+
+    except AppointmentOverlap as e:
+        return jsonify({"error": "Time slot conflict"}), 409
+    except AppointmentError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as exc:
+        record_exception("api.appointments.add", exc)
         return jsonify({"error": "Internal server error"}), 500
 
 
-@bp.route("/api/appointments/validate-slot", methods=["GET"], endpoint="api_validate_slot")
-@require_permission("appointments:view")
-def api_validate_slot():
-    """API endpoint to validate if a time slot is available."""
+@csrf.exempt
+@bp.route("/api/appointments/edit/<appt_id>", methods=["PUT"])
+@require_permission("appointments:edit")
+def api_edit_appointment(appt_id):
+    """API endpoint to edit existing appointment."""
     try:
-        doctor_id = request.args.get("doctor_id")
-        day = request.args.get("day")
-        start_time = request.args.get("start_time")
-        end_time = request.args.get("end_time")
-        exclude_appointment_id = request.args.get("exclude_id")
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
 
-        if not all([doctor_id, day, start_time, end_time]):
-            return jsonify({"error": "doctor_id, day, start_time, and end_time are required"}), 400
+        # Map template fields to service fields
+        form_data = {
+            "day": data.get("startTime", "")[:10],
+            "start_time": data.get("startTime", "")[11:16] if len(data.get("startTime", "")) > 11 else "09:00",
+            "doctor_id": data.get("doctor", ""),
+            "title": data.get("reason", ""),
+            "notes": data.get("notes", ""),
+            "status": data.get("status", "scheduled"),
+        }
 
-        has_conflict = validate_time_slot_overlap(doctor_id, start_time, end_time, day, exclude_appointment_id)
-        return jsonify({"available": not has_conflict})
+        update_appointment(appt_id, form_data, actor_id=getattr(g.current_user, "id", None))
+        return jsonify({"id": appt_id, "status": "updated"}), 200
+
+    except AppointmentOverlap as e:
+        return jsonify({"error": "Time slot conflict"}), 409
+    except AppointmentNotFound:
+        return jsonify({"error": "Appointment not found"}), 404
+    except AppointmentError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as exc:
-        record_exception("api.validate_slot", exc)
+        record_exception("api.appointments.edit", exc)
         return jsonify({"error": "Internal server error"}), 500
 
 
-@bp.route("/api/appointments/auto-generate-end", methods=["GET"], endpoint="api_auto_generate_end")
-@require_permission("appointments:view")
-def api_auto_generate_end():
-    """API endpoint to auto-generate end time from start time."""
+@csrf.exempt
+@bp.route("/api/appointments/status/<appt_id>", methods=["PATCH"])
+@require_permission("appointments:edit")
+def api_update_status(appt_id):
+    """API endpoint to update appointment status."""
     try:
-        start_time = request.args.get("start_time")
-        duration_minutes = request.args.get("duration")
+        data = request.get_json()
+        if not data or "status" not in data:
+            return jsonify({"error": "Status required"}), 400
 
-        if not start_time:
-            return jsonify({"error": "start_time is required"}), 400
+        update_status(appt_id, data["status"])
+        return jsonify({"id": appt_id, "status": data["status"]}), 200
 
-        duration = int(duration_minutes) if duration_minutes else None
-        end_time = auto_generate_time_slot(start_time, duration)
-        return jsonify({"end_time": end_time})
+    except AppointmentNotFound:
+        return jsonify({"error": "Appointment not found"}), 404
+    except AppointmentError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as exc:
-        record_exception("api.auto_generate_end", exc)
+        record_exception("api.appointments.status", exc)
         return jsonify({"error": "Internal server error"}), 500
 
 
-@bp.route("/api/appointments/<appt_id>", methods=["GET"], endpoint="api_appointment_details")
-@require_permission("appointments:view")
-def api_appointment_details(appt_id):
-    """API endpoint to get full appointment details for modal display."""
+@csrf.exempt
+@bp.route("/api/appointments/delete/<appt_id>", methods=["DELETE"])
+@require_permission("appointments:edit")
+def api_delete_appointment(appt_id):
+    """API endpoint to delete appointment."""
     try:
-        from clinic_app.services.appointments import get_appointment_by_id
+        delete_appt(appt_id)
+        return jsonify({"message": "Appointment deleted"}), 200
 
-        appointment = get_appointment_by_id(appt_id)
-        if not appointment:
-            return jsonify({"error": "Appointment not found"}), 404
-
-        # Format time ranges
-        start_time = appointment["starts_at"][11:16] if len(appointment["starts_at"]) > 11 else appointment["starts_at"]
-        end_time = appointment["ends_at"][11:16] if len(appointment["ends_at"]) > 11 else appointment["ends_at"]
-
-        return jsonify({
-            "id": appointment["id"],
-            "patient_name": appointment.get("patient_name", "N/A"),
-            "patient_phone": appointment.get("patient_phone", "N/A"),
-            "patient_short_id": appointment.get("patient_short_id", "N/A"),
-            "doctor_label": appointment.get("doctor_label", "N/A"),
-            "title": appointment.get("title", "N/A"),
-            "notes": appointment.get("notes", ""),
-            "date": appointment["starts_at"][:10] if len(appointment["starts_at"]) > 10 else "N/A",
-            "start_time": start_time,
-            "end_time": end_time,
-            "status": appointment.get("status", "scheduled"),
-            "created_at": appointment.get("created_at", "N/A"),
-            "updated_at": appointment.get("updated_at", "N/A")
-        })
+    except AppointmentNotFound:
+        return jsonify({"error": "Appointment not found"}), 404
+    except AppointmentError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as exc:
-        record_exception("api.appointment_details", exc)
+        record_exception("api.appointments.delete", exc)
         return jsonify({"error": "Internal server error"}), 500

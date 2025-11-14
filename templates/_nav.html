@@ -29,7 +29,7 @@
       {% endif %}
       <a class="btn secondary home-btn" href="{{ url_for('index') }}">{{ t('home') }}</a>
       {% if current_user and user_has_permission(current_user, 'appointments:view') %}
-        <a class="btn secondary" href="{{ url_for('appointments.table') }}">{{ t('appointments') }}</a>
+        <a class="btn secondary" href="{{ url_for('appointments.vanilla') }}">{{ t('appointments') }}</a>
       {% endif %}
       {% if current_user and user_has_permission(current_user, 'receipts:view') %}
         <a class="btn secondary" href="{{ url_for('receipts.index') }}">{{ t('receipts') }}</a>
