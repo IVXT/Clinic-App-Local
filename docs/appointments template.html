@@ -1,93 +1,47 @@
-{% extends '_base.html' %}
-{% block head %}
-{{ super() }}
-<!-- Load Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com"></script>
-<!-- Load Lucide icons -->
-<script src="https://unpkg.com/lucide@latest"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointments</title>
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. Load Lucide icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Simple Inter font stack */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        /* Custom scrollbar for modal content */
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .modal-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .modal-content::-webkit-scrollbar-thumb {
+            background: #a8a8a8;
+            border-radius: 4px;
+        }
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
 
-<style>
-    /* Simple Inter font stack */
-    body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    }
-    /* Custom scrollbar for modal content */
-    .modal-content::-webkit-scrollbar {
-        width: 8px;
-    }
-    .modal-content::-webkit-scrollbar-track {
-        background: #f1f1f1;
-    }
-    .modal-content::-webkit-scrollbar-thumb {
-        background: #a8a8a8;
-        border-radius: 4px;
-    }
-    .modal-content::-webkit-scrollbar-thumb:hover {
-        background: #888;
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="bg-gray-100 min-h-screen">
-    <!-- This is the root container for the app -->
+    <!-- 3. This is the root container for the app -->
     <div id="app-root"></div>
-</div>
 
-<!-- JSON data injected from Flask -->
-<script type="application/json" id="appointments-data">{{ appointments_json | safe }}</script>
-<script type="application/json" id="patients-data">{{ patients_json | safe }}</script>
-<script type="application/json" id="doctors-data">{{ doctors_json | safe }}</script>
-
-<!-- 
-  All JavaScript logic is contained here.
-  It reads the data injected into the <head>.
--->
-{% raw %}
-<script type="module">
+    <!-- 4. All JavaScript logic is contained here -->
+    <script type="module">
         // === ICON LOADER ===
         // Lucide icons need to be manually initialized
         const loadIcons = () => {
-            try {
-                if (typeof lucide !== 'undefined' && lucide.createIcons) {
-                    lucide.createIcons();
-                } else {
-                    console.warn('Lucide icons library not loaded, icons will not display');
-                }
-            } catch (error) {
-                console.warn('Error loading Lucide icons:', error);
-            }
-        };
-
-        // Fallback icon function for when Lucide fails
-        const createFallbackIcon = (iconName) => {
-            const fallbackIcons = {
-                'eye': '👁️',
-                'edit': '✏️',
-                'trash-2': '🗑️',
-                'plus': '+',
-                'search': '🔍',
-                'calendar': '📅',
-                'clock': '🕐',
-                'user': '👤',
-                'x': '✕'
-            };
-            return fallbackIcons[iconName] || '•';
-        };
-
-        // Enhanced icon function that handles Lucide failures
-        const createIcon = (iconName) => {
-            try {
-                if (typeof lucide !== 'undefined' && lucide.createIcons) {
-                    const icon = document.createElement('i');
-                    icon.setAttribute('data-lucide', iconName);
-                    icon.className = 'w-4 h-4'; // Default size classes
-                    return icon.outerHTML;
-                }
-            } catch (e) {
-                // Fall back to emoji
-            }
-            return `<span class="fallback-icon">${createFallbackIcon(iconName)}</span>`;
+            // Call createIcons without parameters. 
+            // It automatically finds all elements with `data-lucide` attributes.
+            lucide.createIcons();
         };
 
         // === TRANSLATIONS ===
@@ -160,7 +114,7 @@
             noAppointmentsDesc: 'حاول تعديل الفلاتر أو اختيار تاريخ آخر.',
             file: 'ملف',
             Scheduled: 'مجدول',
-            Pending: 'قيد الانتظار',
+            Pending: 'قيد الانتظAR',
             Cancelled: 'ملغى',
             Done: 'مكتمل',
             close: 'إغلاق',
@@ -182,88 +136,126 @@
           }
         };
 
-        // === DATA LOADER ===
-        /**
-         * Safely parses JSON from an element's textContent.
-         * Handles empty strings, null, "None", and un-rendered Jinja2 variables.
-         */
-        function safeJsonParse(elementId, fallback = []) {
-            const element = document.getElementById(elementId);
-            if (!element) {
-                return Array.isArray(fallback) ? [...fallback] : fallback;
-            }
-            const content = (element.textContent || element.innerText || '').trim();
+        // === MOCK DATA ===
+        // !!! REPLACE THIS with data from your Python backend !!!
+        const mockAppointments = [
+          {
+            id: 1,
+            patientName: 'Liam Johnson',
+            phoneNumber: '555-0101',
+            fileNumber: 'P-1001',
+            doctor: 'Dr. Evelyn Reed',
+            startTime: '2025-11-13T09:00:00',
+            endTime: '2025-11-13T09:45:00',
+            status: 'Scheduled',
+            reason: 'Annual Checkup',
+          },
+          {
+            id: 2,
+            patientName: 'Olivia Smith',
+            phoneNumber: '555-0102',
+            fileNumber: 'P-1002',
+            doctor: 'Dr. Marcus Cole',
+            startTime: '2025-11-13T10:00:00',
+            endTime: '2025-11-13T10:30:00',
+            status: 'Pending',
+            reason: 'Follow-up',
+          },
+          {
+            id: 3,
+            patientName: 'Noah Williams',
+            phoneNumber: '555-0103',
+            fileNumber: 'P-1003',
+            doctor: 'Dr. Evelyn Reed',
+            startTime: '2025-11-14T08:30:00',
+            endTime: '2025-11-14T09:00:00',
+            status: 'Scheduled',
+            reason: 'Consultation',
+          },
+          {
+            id: 4,
+            patientName: 'Emma Brown',
+            phoneNumber: '555-0104',
+            fileNumber: 'P-1004',
+            doctor: 'Dr. Samuel Green',
+            startTime: '2025-11-14T09:15:00',
+            endTime: '2025-11-14T10:00:00',
+            status: 'Scheduled',
+            reason: 'New Patient',
+          },
+          {
+            id: 5,
+            patientName: 'James Wilson',
+            phoneNumber: '555-0105',
+            fileNumber: 'P-1005',
+            doctor: 'Dr. Marcus Cole',
+            startTime: '2025-11-14T11:00:00',
+            endTime: '2025-11-14T11:45:00',
+            status: 'Cancelled',
+            reason: 'Dental Cleaning',
+          },
+          {
+            id: 6,
+            patientName: 'Sophia Jones',
+            phoneNumber: '555-0106',
+            fileNumber: 'P-1006',
+            doctor: 'Dr. Evelyn Reed',
+            startTime: '2025-11-15T14:00:00',
+            endTime: '2025-11-15T14:30:00',
+            status: 'Scheduled',
+            reason: 'Vaccination',
+          },
+          {
+            id: 7,
+            patientName: 'Benjamin Davis',
+            phoneNumber: '555-0107',
+            fileNumber: 'P-1007',
+            doctor: 'Dr. Samuel Green',
+            startTime: '2025-11-15T15:00:00',
+            endTime: '2025-11-15T15:45:00',
+            status: 'Scheduled',
+            reason: 'X-Ray',
+          },
+            {
+            id: 8,
+            patientName: 'Mia Miller',
+            phoneNumber: '555-0108',
+            fileNumber: 'P-1008',
+            doctor: 'Dr. Marcus Cole',
+            startTime: '2025-11-14T16:00:00',
+            endTime: '2025-11-14T16:30:00',
+            status: 'Scheduled',
+            reason: 'Lab Results',
+          },
+        ];
 
-            // Check for empty, "None", or an un-rendered template variable
-            if (!content || content.toLowerCase() === 'none' || content.indexOf('{{') === 0) {
-                return fallback;
-            }
-            try {
-                return JSON.parse(content);
-            } catch (error) {
-                // Failed to parse JSON, falling back to default value.
-                return fallback;
-            }
-        }
+        // !!! REPLACE THIS with data from your Python backend !!!
+        const mockPatients = [
+          { fileNumber: 'P-1001', name: 'Liam Johnson', phoneNumber: '555-0101' },
+          { fileNumber: 'P-1002', name: 'Olivia Smith', phoneNumber: '555-0102' },
+          { fileNumber: 'P-1003', name: 'Noah Williams', phoneNumber: '555-0103' },
+          { fileNumber: 'P-1004', name: 'Emma Brown', phoneNumber: '555-0104' },
+          { fileNumber: 'P-1005', name: 'James Wilson', phoneNumber: '555-0105' },
+          { fileNumber: 'P-1006', name: 'Sophia Jones', phoneNumber: '555-0106' },
+          { fileNumber: 'P-1007', name: 'Benjamin Davis', phoneNumber: '555-0107' },
+          { fileNumber: 'P-1008', name: 'Mia Miller', phoneNumber: '555-0108' },
+          { fileNumber: 'P-1009', name: 'Charlotte Garcia', phoneNumber: '555-0109' },
+          { fileNumber: 'P-1010', name: 'William Rodriguez', phoneNumber: '555-0110' },
+          { fileNumber: 'P-1011', name: 'Amelia Martinez', phoneNumber: '555-0111' },
+          { fileNumber: 'P-1012', name: 'Henry Hernandez', phoneNumber: '555-0112' },
+        ];
 
-        // Data is now read from the <script> tags near the content block
-        const backendAppointments = safeJsonParse('appointments-data', []);
-        const backendPatients = safeJsonParse('patients-data', []);
-        const backendDoctors = safeJsonParse('doctors-data', ['All Doctors']);
-
-        const mockPatients = Array.isArray(backendPatients) ? backendPatients : [];
-        const doctorsList = (() => {
-            if (!Array.isArray(backendDoctors) || backendDoctors.length === 0) {
-                return ['All Doctors'];
-            }
-            const seen = new Set();
-            const ordered = [];
-            backendDoctors.forEach((doctor) => {
-                if (!doctor) {
-                    return;
-                }
-                const label = typeof doctor === 'string' ? doctor : doctor.name || doctor.label || '';
-                if (!label) {
-                    return;
-                }
-                if (!seen.has(label)) {
-                    seen.add(label);
-                    ordered.push(label);
-                }
-            });
-            if (ordered[0] !== 'All Doctors') {
-                ordered.unshift('All Doctors');
-            }
-            return ordered;
-        })();
-
-        function normalizeAppointment(appt, index) {
-            if (!appt) {
-                return null;
-            }
-            return {
-                id: appt.id ?? `appt-${index + 1}`,
-                patientName: appt.patientName || appt.patient_name || '—',
-                phoneNumber: appt.phoneNumber || appt.patient_phone || '',
-                fileNumber: appt.fileNumber || appt.patient_short_id || '',
-                doctor: appt.doctor || appt.doctor_label || appt.doctor_id || '',
-                startTime: appt.startTime || appt.starts_at || '',
-                endTime: appt.endTime || appt.ends_at || '',
-                status: appt.status || appt.status_label || 'Scheduled',
-                reason: appt.reason || appt.title || '',
-            };
-        }
-
-        const normalizedAppointments = Array.isArray(backendAppointments)
-            ? backendAppointments.map(normalizeAppointment).filter(Boolean)
-            : [];
-        const initialAppointments = normalizedAppointments;
+        const doctorsList = [
+          'All Doctors',
+          'Dr. Evelyn Reed',
+          'Dr. Marcus Cole',
+          'Dr. Samuel Green',
+        ];
 
         // === UTILITY FUNCTIONS ===
         const getISODate = (dateStr) => new Date(dateStr).toISOString().split('T')[0];
 
         const formatTime = (dateStr, locale = 'en-US') => {
-          if (!dateStr) return '';
           return new Date(dateStr).toLocaleTimeString(locale, {
             hour: 'numeric',
             minute: '2-digit',
@@ -331,12 +323,7 @@
             saveStateToLocalStorage();
             
             // Re-render the app
-            // We prevent re-render if only accordion state is changing
-            if (newState.openAccordions && Object.keys(newState).length === 1) {
-                // This is just an accordion toggle, don't re-render the whole app
-            } else {
-                 renderApp();
-            }
+            renderApp();
         }
         
         function saveStateToLocalStorage() {
@@ -347,14 +334,12 @@
             localStorage.setItem('appt_customEndDate', state.customEndDate);
             localStorage.setItem('appt_useDateRange', JSON.stringify(state.useDateRange));
             localStorage.setItem('appt_searchTerm', state.searchTerm);
-            // We don't save modal state, but we could save accordion state
-            // localStorage.setItem('appt_openAccordions', JSON.stringify(state.openAccordions));
         }
         
         function loadStateFromLocalStorage() {
             return {
                 language: localStorage.getItem('appt_language') || 'en',
-                appointments: initialAppointments, // This holds the "master list"
+                appointments: mockAppointments, // This holds the "master list"
                 activeDateFilter: localStorage.getItem('appt_activeDateFilter') || 'Today',
                 selectedDoctor: localStorage.getItem('appt_selectedDoctor') || 'All Doctors',
                 customStartDate: localStorage.getItem('appt_customStartDate') || '',
@@ -365,9 +350,8 @@
                 isEditModalOpen: false,
                 isAddModalOpen: false,
                 selectedAppointment: null,
-                isDeleteModalOpen: false, 
-                appointmentToDelete: null, 
-                openAccordions: {}, // Added to save accordion state
+                isDeleteModalOpen: false, // Add state for delete modal
+                appointmentToDelete: null, // Add state for appointment ID to delete
             };
         }
 
@@ -380,8 +364,6 @@
         // These functions update the global state.
         
         function handleStatusChange(apptId, newStatus) {
-            // This function should be updated to call your API
-            console.log(`API Call (Simulation): Update appointment ${apptId} to ${newStatus}`);
             const newAppointments = state.appointments.map(appt =>
                 appt.id === apptId ? { ...appt, status: newStatus } : appt
             );
@@ -389,58 +371,33 @@
         }
 
         function handleOpenViewModal(appt) {
-            // MODIFIED: Don't call setState, just render the modal.
-            // This prevents the whole app from re-rendering and accordions closing.
-            const modalContainer = document.getElementById('modal-container');
-            modalContainer.innerHTML = ''; // Clear any existing modal
-            modalContainer.appendChild(createViewModal(appt));
-            loadIcons();
+            setState({ isViewModalOpen: true, selectedAppointment: appt });
         }
         
         function handleOpenEditModal(appt) {
-            // MODIFIED: Don't call setState
-            const modalContainer = document.getElementById('modal-container');
-            modalContainer.innerHTML = '';
-            modalContainer.appendChild(createEditModal(appt));
-            loadIcons();
-        }
-        
-        function handleOpenAddModal() {
-             // MODIFIED: Don't call setState
-            const modalContainer = document.getElementById('modal-container');
-            modalContainer.innerHTML = '';
-            modalContainer.appendChild(createAddModal());
-            loadIcons();
-        }
-
-        function handleOpenDeleteModal(apptId) {
-             // MODIFIED: Don't call setState
-            const modalContainer = document.getElementById('modal-container');
-            modalContainer.innerHTML = '';
-            modalContainer.appendChild(createDeleteModal(apptId));
-            loadIcons();
+            setState({ isEditModalOpen: true, selectedAppointment: appt });
         }
         
         function handleCloseModals() {
-            // MODIFIED: Don't call setState, just clear the modal container
-            const modalContainer = document.getElementById('modal-container');
-            modalContainer.innerHTML = '';
+            setState({ 
+                isViewModalOpen: false, 
+                isEditModalOpen: false, 
+                isAddModalOpen: false,
+                isDeleteModalOpen: false, // Close delete modal
+                selectedAppointment: null,
+                appointmentToDelete: null, // Clear appointment to delete
+            });
         }
 
         function handleUpdateAppointment(updatedAppt) {
-            // This function should be updated to call your API
-            console.log("API Call (Simulation): Update appointment", updatedAppt);
             const newAppointments = state.appointments.map(appt => 
                 appt.id === updatedAppt.id ? updatedAppt : appt
             );
-            // Now we call setState to update the list
             setState({ appointments: newAppointments });
             handleCloseModals();
         }
 
         function handleSaveNewAppointment(newApptData) {
-            // This function should be updated to call your API
-            console.log("API Call (Simulation): Add new appointment", newApptData);
             const newAppointment = {
                 ...newApptData,
                 id: Math.max(0, ...state.appointments.map(a => a.id)) + 1, // Simple ID
@@ -453,20 +410,24 @@
         }
 
         function handleDeleteAppointment(apptId) {
-            handleOpenDeleteModal(apptId);
+            // Instead of deleting, open the confirmation modal
+            setState({ isDeleteModalOpen: true, appointmentToDelete: apptId });
         }
         
-        function handleConfirmDelete(apptId) {
+        function handleConfirmDelete() {
+            const apptId = state.appointmentToDelete;
             if (!apptId) return;
 
-            // This function should be updated to call your API
-            console.log("API Call (Simulation): DELETE confirmed:", apptId);
+            // In a real app, you would show a custom modal confirmation
+            console.log("DELETE CONFIRMED:", apptId);
             const newAppointments = state.appointments.filter(a => a.id !== apptId);
             
+            // Set new state and close modal
             setState({ 
-                appointments: newAppointments
+                appointments: newAppointments, 
+                isDeleteModalOpen: false, 
+                appointmentToDelete: null 
             });
-            handleCloseModals();
         }
         
         function handleDateFilterClick(filter) {
@@ -479,6 +440,7 @@
         }
 
         // === HTML TEMPLATE FUNCTIONS ===
+        // These functions generate HTML strings or DOM elements.
         
         /** Creates a DOM element from an HTML string */
         function createElement(html) {
@@ -533,26 +495,20 @@
                       <!-- StatusBadge will be appended here -->
                     </div>
                     
-                    <!-- MODIFIED: Patient Info Chip -->
                     <div class="mb-3">
                        <a href="#" class="group" data-filenumber="${appt.fileNumber}">
-                        <span class="inline-block bg-blue-100 text-blue-800 text-sm font-semibold px-4 py-2 rounded-lg group-hover:bg-blue-200 transition-colors">
-                          <strong class="block text-base">${appt.patientName}</strong>
-                          <span class="block text-xs font-normal mt-1">📁 ${t('file')}: ${appt.fileNumber}</span>
-                          <span class="block text-xs font-normal">📞 ${appt.phoneNumber}</span>
+                        <span class="inline-block bg-blue-100 text-blue-800 text-base font-semibold px-4 py-1 rounded-full group-hover:bg-blue-200 transition-colors">
+                          ${appt.patientName}
                         </span>
+                        <div class="flex items-center gap-4 text-sm text-gray-600 mt-2 ms-1">
+                          <span class="text-xs">📁 ${t('file')}: ${appt.fileNumber}</span>
+                          <span class="text-xs">📞 ${appt.phoneNumber}</span>
+                        </div>
                       </a>
                     </div>
 
                     <p class="text-sm text-gray-600 mb-4 pt-1">${appt.reason || ''}</p>
                     <div class="space-y-3 text-sm">
-                      <!-- NEW: Date Chip -->
-                      <div class="flex items-center text-gray-700">
-                        <i data-lucide="calendar" class="w-4 h-4 me-2 text-blue-500"></i>
-                        <span class="bg-gray-200 text-gray-800 px-3 py-1 rounded-full text-xs font-medium">
-                          ${new Date(appt.startTime).toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' })}
-                        </span>
-                      </div>
                       <div class="flex items-center text-gray-700">
                         <i data-lucide="clock" class="w-4 h-4 me-2 text-blue-500"></i>
                         <span>
@@ -604,13 +560,8 @@
 
         function createDateGroup(date, appointments) {
             const locale = state.language === 'ar' ? 'ar-EG' : 'en-US';
-            const today = getISODate(new Date());
-            
-            // MODIFIED: Read open state from global state
-            const defaultOpen = date === today && state.activeDateFilter === 'Today';
-            // On first load, openAccordions[date] will be undefined, so use defaultOpen.
-            // After that, use the stored state.
-            let isOpen = state.openAccordions[date] === undefined ? defaultOpen : state.openAccordions[date];
+            const todayForDemo = '2025-11-14';
+            const defaultOpen = date === todayForDemo && state.activeDateFilter === 'Today';
             
             const totalCount = appointments.length;
             const doneCount = appointments.filter(a => a.status === 'Done').length;
@@ -641,12 +592,10 @@
             const content = group.querySelector('.p-4.bg-white');
             const chevron = group.querySelector('[data-lucide="chevron-down"]');
             
-            // MODIFIED: Toggle logic now updates global state
+            // Toggle logic
+            let isOpen = defaultOpen;
             const toggle = () => {
-                isOpen = !isOpen; // Update local-in-closure state
-                // Update global state
-                state.openAccordions[date] = isOpen;
-                // Manually update UI instead of full re-render
+                isOpen = !isOpen;
                 content.style.display = isOpen ? 'block' : 'none';
                 chevron.style.transform = isOpen ? 'rotate(180deg)' : '';
             };
@@ -659,8 +608,8 @@
                 cardContainer.appendChild(createAppointmentCard(appt));
             });
 
-            // MODIFIED: Set initial state based on state-aware 'isOpen'
-            if (isOpen) {
+            // Set initial state
+            if (defaultOpen) {
                 content.style.display = 'block';
                 chevron.style.transform = 'rotate(180deg)';
             }
@@ -671,7 +620,7 @@
         function createModal({ title, contentElement, onClose }) {
             const modal = createElement(String.raw`
                 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-                  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden" id="modal-content-wrapper">
+                  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
                     <div class="flex justify-between items-center p-4 border-b">
                       <h2 class="text-xl font-semibold">${title}</h2>
                       <button class="close-btn text-gray-500 hover:text-gray-700">
@@ -689,10 +638,7 @@
             
             // Close logic
             modal.addEventListener('click', (e) => {
-                if (e.target === modal) onClose(); // Only close if clicking overlay
-            });
-            modal.querySelector('#modal-content-wrapper').addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent clicks inside modal from closing it
+                if (e.target === modal) onClose();
             });
             modal.querySelector('.close-btn').addEventListener('click', onClose);
             
@@ -834,7 +780,7 @@
             return createModal({ title: t('edit') + ' ' + t('appointments'), contentElement: content, onClose: handleCloseModals });
         }
         
-        function createDeleteModal(apptId) {
+        function createDeleteModal() {
             const content = createElement(String.raw`
                 <div>
                   <p class="text-sm text-gray-700">
@@ -852,7 +798,7 @@
             `);
             
             content.querySelector('#cancel-btn').addEventListener('click', handleCloseModals);
-            content.querySelector('#confirm-delete-btn').addEventListener('click', () => handleConfirmDelete(apptId));
+            content.querySelector('#confirm-delete-btn').addEventListener('click', handleConfirmDelete);
 
             return createModal({ title: t('Delete Appointment'), contentElement: content, onClose: handleCloseModals });
         }
@@ -947,11 +893,6 @@
                     const resultsBox = searchBox.querySelector('#search-results');
                     
                     input.addEventListener('input', (e) => {
-                        // This should be updated to call your API
-                        // fetch(`/api/patients/search?q=${e.target.value}`)
-                        // .then(res => res.json())
-                        // .then(filtered => { ... })
-                        
                         const term = e.target.value.toLowerCase();
                         if (!term) {
                             resultsBox.style.display = 'none';
@@ -960,8 +901,8 @@
                         
                         const filtered = mockPatients.filter(p =>
                           p.name.toLowerCase().includes(term) ||
-                          (p.fileNumber && p.fileNumber.toLowerCase().includes(term)) ||
-                          (p.phoneNumber && p.phoneNumber.includes(term))
+                          p.fileNumber.toLowerCase().includes(term) ||
+                          p.phoneNumber.includes(term)
                         ).slice(0, 5);
                         
                         resultsBox.innerHTML = '';
@@ -998,9 +939,7 @@
                 
                 const formData = new FormData(e.target);
                 const newApptData = {
-                    patientName: selectedPatient.name, 
-                    phoneNumber: selectedPatient.phoneNumber,
-                    fileNumber: selectedPatient.fileNumber,
+                    ...selectedPatient,
                     doctor: formData.get('doctor'),
                     status: formData.get('status'),
                     reason: formData.get('reason'),
@@ -1174,7 +1113,7 @@
             document.documentElement.lang = state.language;
             document.documentElement.dir = state.language === 'ar' ? 'rtl' : 'ltr';
 
-            // --- Filtering Logic ---
+            // --- Filtering Logic (from React useMemo) ---
             const today = getISODate(new Date());
             const tomorrow = getISODate(new Date(Date.now() + 24 * 60 * 60 * 1000));
             const yesterday = getISODate(new Date(Date.now() - 24 * 60 * 60 * 1000));
@@ -1183,8 +1122,8 @@
             const filteredAppointments = state.appointments.filter((appt) => {
               if (lowerSearchTerm) {
                 if (!appt.patientName.toLowerCase().includes(lowerSearchTerm) &&
-                    (!appt.fileNumber || !appt.fileNumber.toLowerCase().includes(lowerSearchTerm)) &&
-                    (!appt.phoneNumber || !appt.phoneNumber.toLowerCase().includes(lowerSearchTerm))) {
+                    !appt.fileNumber.toLowerCase().includes(lowerSearchTerm) &&
+                    !appt.phoneNumber.toLowerCase().includes(lowerSearchTerm)) {
                   return false;
                 }
               }
@@ -1197,7 +1136,7 @@
 
               switch (state.activeDateFilter) {
                 case 'Today': return apptDate === today;
-                case 'Tomorrow': return apptDate === tomorrow; 
+                case 'Tomorrow': return apptDate === tomorrow;
                 case 'Yesterday': return apptDate === yesterday;
                 case 'Custom':
                   if (!state.customStartDate) return true;
@@ -1210,7 +1149,7 @@
               }
             });
 
-            // --- Grouping Logic ---
+            // --- Grouping Logic (from React useMemo) ---
             const groupedAppointments = filteredAppointments.reduce((acc, appt) => {
               const date = getISODate(appt.startTime);
               if (!acc[date]) acc[date] = [];
@@ -1244,7 +1183,7 @@
             
             // Add Appointment Button
             appContainer.querySelector('#add-appointment-btn').addEventListener('click', () => {
-                handleOpenAddModal();
+                setState({ isAddModalOpen: true });
             });
             
             // Filter Bar
@@ -1261,14 +1200,25 @@
                     <div class="text-center py-16 px-6 bg-white rounded-lg shadow-sm border border-gray-200">
                       <i data-lucide="filter" class="w-12 h-12 mx-auto text-gray-400"></i>
                       <h3 class="mt-2 text-lg font-semibold text-gray-900">${t('noAppointments')}</h3>
-                      <p class="mt-1 text-sm text-gray-500">${t('noAppointmentsDesc')}</p>
+                      <p class="mt-1 text-sm text-gray-50Rows">${t('noAppointmentsDesc')}</p>
                     </div>
                 `;
             }
             
-            // Modals container
+            // Modals
             const modalContainer = appContainer.querySelector('#modal-container');
-            // Modals are now added/removed by the event handlers, not on full render
+            if (state.isViewModalOpen && state.selectedAppointment) {
+                modalContainer.appendChild(createViewModal(state.selectedAppointment));
+            }
+            if (state.isEditModalOpen && state.selectedAppointment) {
+                modalContainer.appendChild(createEditModal(state.selectedAppointment));
+            }
+            if (state.isAddModalOpen) {
+                modalContainer.appendChild(createAddModal());
+            }
+            if (state.isDeleteModalOpen && state.appointmentToDelete) {
+                modalContainer.appendChild(createDeleteModal());
+            }
 
             // Append the fully built app to the root
             appRoot.appendChild(appContainer);
@@ -1280,8 +1230,6 @@
         // === INITIALIZATION ===
         
         // This function will be called by your external button
-        // You need to find your button in your _base.html or navigation
-        // and add onclick="window.toggleAppLanguage()"
         window.toggleAppLanguage = () => {
             const newLang = state.language === 'en' ? 'ar' : 'en';
             setState({ language: newLang });
@@ -1289,31 +1237,9 @@
         
         // Load the app on startup
         document.addEventListener('DOMContentLoaded', () => {
-            try {
-                console.log('Initializing appointments app...');
-                state = loadStateFromLocalStorage();
-                console.log('State loaded successfully');
-                renderApp();
-                console.log('App rendered successfully');
-            } catch (error) {
-                console.error("Failed to initialize appointments app:", error);
-                const appRoot = document.getElementById('app-root');
-                if (appRoot) {
-                    const safeErrorMessage = error.message ? error.message.replace(/[<>]/g, '') : 'Unknown error';
-                    appRoot.innerHTML = `
-                        <div class="max-w-4xl mx-auto p-4 md:p-8">
-                            <div class="p-4 bg-red-100 border border-red-300 rounded-md">
-                                <h3 class="font-bold text-red-800">Error Loading Application</h3>
-                                <p class="text-red-700 mb-2">Could not load application data. This might be due to a server-side data injection error.</p>
-                                <button onclick="location.reload()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-                                    Reload Page
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-            }
+            state = loadStateFromLocalStorage();
+            renderApp();
         });
     </script>
-    {% endraw %}
-{% endblock %}
+</body>
+</html>

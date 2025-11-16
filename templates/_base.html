@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="{{ lang }}" dir="{{ dir }}">
 <head>
+  {% block head %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -9,6 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/print-receipts.css') }}">
   <script src="{{ url_for('static', filename='js/patient-receipts.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/status-chip.js') }}"></script>
+  {% endblock %}
   
 </head>
 <body class="{{ 'rtl' if lang == 'ar' else '' }}">

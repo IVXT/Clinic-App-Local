@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointments</title>
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. Load Lucide icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Simple Inter font stack */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        /* Custom scrollbar for modal content */
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .modal-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .modal-content::-webkit-scrollbar-thumb {
+            background: #a8a8a8;
+            border-radius: 4px;
+        }
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- 3. This is the root container for the app -->
+    <div id="app-root"></div>
+
+    <!-- 4. All JavaScript logic is contained here -->
+    <script type="module">
+        // === ICON LOADER ===
+        // Lucide icons need to be manually initialized
+        const loadIcons = () => {
+            // Call createIcons without parameters. 
+            // It automatically finds all elements with `data-lucide` attributes.
+            lucide.createIcons();
+        };
+
+        // === TRANSLATIONS ===
+        const translations = {
+          en: {
+            appointments: 'Appointments',
+            searchPatient: 'Search Patient',
+            searchPlaceholder: 'Search by name, file number, or phone...',
+            date: 'Date',
+            allDays: 'All Days',
+            yesterday: 'Yesterday',
+            today: 'Today',
+            tomorrow: 'Tomorrow',
+            doctor: 'Doctor',
+            allDoctors: 'All Doctors',
+            customDate: 'Custom Date',
+            useRange: 'Use Range',
+            to: 'to',
+            total: 'Total',
+            done: 'Done',
+            scheduled: 'Scheduled',
+            view: 'View',
+            edit: 'Edit',
+            delete: 'Delete',
+            noAppointments: 'No Appointments Found',
+            noAppointmentsDesc: 'Try adjusting your filters or selecting a different date.',
+            file: 'File',
+            Scheduled: 'Scheduled',
+            Pending: 'Pending',
+            Cancelled: 'Cancelled',
+            Done: 'Done',
+            close: 'Close',
+            save: 'Save',
+            cancel: 'Cancel',
+            'Patient Name': 'Patient Name',
+            Phone: 'Phone',
+            Reason: 'Reason',
+            'Start Time': 'Start Time',
+            'End Time': 'End Time',
+            Status: 'Status',
+            Patient: 'Patient',
+            'Add Appointment': 'Add Appointment',
+            'Delete Appointment': 'Delete Appointment',
+            'delete-confirm': 'Are you sure you want to delete this appointment? This action cannot be undone.',
+            searchPatientsPlaceholder: 'Search by name, file, or phone...',
+            noPatientFound: 'No patient found.',
+            change: 'Change',
+          },
+          ar: {
+            appointments: 'المواعيد',
+            searchPatient: 'البحث عن مريض',
+            searchPlaceholder: 'البحث بالإسم، رقم الملف، أو الهاتف...',
+            date: 'التاريخ',
+            allDays: 'كل الأيام',
+            yesterday: 'الأمس',
+            today: 'اليوم',
+            tomorrow: 'غدًا',
+            doctor: 'الطبيب',
+            allDoctors: 'كل الأطباء',
+            customDate: 'تاريخ مخصص',
+            useRange: 'استخدام نطاق',
+            to: 'إلى',
+            total: 'الإجمالي',
+            done: 'مكتمل',
+            scheduled: 'مجدول',
+            view: 'عرض',
+            edit: 'تعديل',
+            delete: 'حذف',
+            noAppointments: 'لم يتم العثور على مواعيد',
+            noAppointmentsDesc: 'حاول تعديل الفلاتر أو اختيار تاريخ آخر.',
+            file: 'ملف',
+            Scheduled: 'مجدول',
+            Pending: 'قيد الانتظAR',
+            Cancelled: 'ملغى',
+            Done: 'مكتمل',
+            close: 'إغلاق',
+            save: 'حفظ',
+            cancel: 'إلغاء',
+            'Patient Name': 'اسم المريض',
+            Phone: 'الهاتف',
+            Reason: 'السبب',
+            'Start Time': 'وقت البدء',
+            'End Time': 'وقت الانتهاء',
+            Status: 'الحالة',
+            Patient: 'المريض',
+            'Add Appointment': 'إضافة موعد',
+            'Delete Appointment': 'حذف الموعد',
+            'delete-confirm': 'هل أنت متأكد أنك تريد حذف هذا الموعد؟ لا يمكن التراجع عن هذا الإجراء.',
+            searchPatientsPlaceholder: 'البحث بالإسم، الملف، أو الهاتف...',
+            noPatientFound: 'لم يتم العثور على مريض.',
+            change: 'تغيير',
+          }
+        };
+
+        // (mockAppointments, mockPatients, doctorsList, utility functions, state management,
+        //  createElement, createStatusBadge, createAppointmentCard, createDateGroup,
+        //  modals, createFilterBar, renderApp, initialization, etc.)
+        // Leave all logic as-is in this source file. You will adapt it when building the Jinja template.
+
+    </script>
+</body>
+</html>

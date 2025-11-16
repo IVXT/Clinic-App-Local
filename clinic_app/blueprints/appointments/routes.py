@@ -162,11 +162,9 @@ def _group_table_appointments(appts: list[dict]) -> list[dict]:
 @bp.route("/appointments", methods=["GET"], endpoint="index")
 @require_permission("appointments:view")
 def appointments_entrypoint():
-    """Main appointments page - defaults to table view."""
+    """Main appointments page - send users to the modern vanilla view."""
     try:
-        day = _selected_day()
-        # Default to table view
-        return redirect(url_for("appointments.table", day=day))
+        return redirect(url_for("appointments.vanilla"))
     except Exception as exc:
         record_exception("appointments.index", exc)
         raise
