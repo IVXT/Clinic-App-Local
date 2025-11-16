@@ -1,1319 +1,995 @@
 {% extends '_base.html' %}
 {% block head %}
 {{ super() }}
-<!-- Load Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com"></script>
-<!-- Load Lucide icons -->
-<script src="https://unpkg.com/lucide@latest"></script>
-
 <style>
-    /* Simple Inter font stack */
-    body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    }
-    /* Custom scrollbar for modal content */
-    .modal-content::-webkit-scrollbar {
-        width: 8px;
-    }
-    .modal-content::-webkit-scrollbar-track {
-        background: #f1f1f1;
-    }
-    .modal-content::-webkit-scrollbar-thumb {
-        background: #a8a8a8;
-        border-radius: 4px;
-    }
-    .modal-content::-webkit-scrollbar-thumb:hover {
-        background: #888;
-    }
+/* Base Styles (Copied from your admin_settings.html) */
+.admin-settings-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+.card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.card-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-primary { background: #3b82f6; color: white; border-color: #3b82f6; }
+.btn-primary:hover { background: #2563eb; border-color: #2563eb; }
+.btn-secondary { background: white; color: #374151; border-color: #d1d5db; }
+.btn-secondary:hover { background: #f9fafb; border-color: #9ca3af; }
+.btn-success { background: #10b981; color: white; border-color: #10b981; }
+.btn-success:hover { background: #059669; border-color: #059669; }
+.btn-danger { background: #ef4444; color: white; border-color: #ef4444; }
+.btn-danger:hover { background: #dc2626; border-color: #dc2626; }
+.btn-sm { padding: 0.25rem 0.75rem; font-size: 0.75rem; }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal.active { display: flex; }
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-title { margin: 0; font-size: 1.25rem; font-weight: 600; color: #1f2937; }
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+.modal-close:hover { background: #f3f4f6; color: #374151; }
+.modal-body { padding: 1.5rem; }
+.modal-footer {
+  padding: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* Form Styles */
+.admin-form { display: grid; gap: 1rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+.form-label { font-size: 0.875rem; font-weight: 600; color: #374151; }
+.form-input, .form-select {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease;
+}
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+.form-checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.alert { padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.875rem; }
+.alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.loading { opacity: 0.6; pointer-events: none; }
+
+/* --- NEW APPOINTMENT STYLES --- */
+.appt-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+.appt-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.appt-header h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.filter-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.filter-card-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* Filter Styles */
+.appt-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.filter-btn {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.filter-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+.filter-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+.appt-filter-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+.appt-filter-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: flex-end;
+}
+.appt-filter-row-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.5fr 1fr;
+  gap: 1rem;
+  align-items: flex-end;
+}
+#end-date-group {
+  transition: opacity 0.2s ease;
+  opacity: 0; /* Will be made visible by JS */
+}
+#end-date-group.visible {
+  opacity: 1;
+}
+.form-buttons-group {
+  justify-content: flex-end; 
+  flex-direction: row; 
+  gap: 0.5rem; 
+  align-items: center;
+}
+@media (max-width: 1024px) {
+  .appt-filter-row {
+    grid-template-columns: 1fr;
+  }
+  .appt-filter-row-dates {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 768px) {
+  .appt-filter-row-dates {
+    grid-template-columns: 1fr;
+  }
+  .form-buttons-group {
+    justify-content: flex-start;
+  }
+}
+
+/* Group Styles */
+.appt-group {
+  margin-top: 2rem;
+}
+.appt-group-header {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 1.5rem;
+}
+.appt-group-header .date-day {
+  color: #3b82f6;
+}
+.no-appointments-card {
+  text-align: center;
+  padding: 3rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+.no-appointments-icon {
+  font-size: 2.5rem;
+  color: #9ca3af;
+}
+.no-appointments-text {
+  font-size: 1rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+}
+
+/* Vertical Card Styles */
+.appt-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.appt-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s ease;
+  min-height: 330px; 
+}
+.appt-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+/* Patient Chip Header */
+.appt-card-patient-chip {
+  display: block;
+  padding: 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-decoration: none;
+  background: #f9fafb;
+  border-radius: 12px 12px 0 0;
+  transition: background-color 0.2s ease;
+  overflow: hidden; 
+}
+.appt-card-patient-chip:hover {
+  background: #f3f4f6;
+}
+.appt-card-patient-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.appt-card-patient-details {
+  display: flex;
+  justify-content: center; /* Centered details */
+  gap: 1rem; /* Added more gap */
+  font-size: 0.875rem;
+  color: #6b7280;
+  white-space: nowrap; /* Prevent wrapping */
+  overflow: hidden;
+}
+/* Stop text from spilling out */
+.appt-card-patient-details span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+
+.appt-card-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex-grow: 1; /* Makes body fill space */
+}
+.appt-card-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: #374151;
+}
+.appt-card-icon {
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+  flex-shrink: 0; /* Prevent icon from shrinking */
+}
+.appt-card-reason {
+  font-style: italic;
+  color: #6b7280;
+}
+.appt-card-footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+/* MODIFIED: Ensure buttons stay on one line */
+.appt-card-footer-buttons {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0; /* Prevent buttons from wrapping */
+}
+
+/* Status Button Styles */
+.status-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0; /* Prevent button from shrinking/wrapping */
+}
+.status-scheduled { background: #fef9c3; color: #713f12; border-color: #fde68a; }
+.status-scheduled:hover { background: #fef3c7; }
+.status-checked_in { background: #ffe4e1; color: #991b1b; border-color: #fecaca; }
+.status-checked_in:hover { background: #fee2e2; }
+.status-done { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+.status-done:hover { background: #bbf7d0; }
+.status-cancelled { background: #e5e7eb; color: #374151; border-color: #d1d5db; }
+.status-cancelled:hover { background: #e0e7ff; }
+
+/* Status Modal */
+.status-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.status-modal-btn {
+  width: 100%;
+  padding: 1.5rem 1rem;
+  font-size: 1rem;
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="bg-gray-100 min-h-screen">
-    <!-- This is the root container for the app -->
-    <div id="app-root"></div>
+<div class="appt-container">
+  
+  <!-- Header -->
+  <div class="appt-header">
+    <h1>Appointments</h1>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="card">
+    <div class="filter-card-header">
+      <h2>Filters</h2>
+      <button class="btn btn-primary" type="button" onclick="openApptModal()">
+        + New Appointment
+      </button>
+    </div>
+
+    <form id="appt-form-main" method="GET" action="{{ url_for('appointments.vanilla') }}" data-today="{{ today_str }}">
+      
+      <!-- Quick Filter Buttons -->
+      <div class="appt-filter-buttons">
+        <a href="{{ url_for('appointments.vanilla', start_date=today_str, end_date=today_str, use_range='on') }}" 
+           class="filter-btn {% if request.args.get('start_date') == today_str and request.args.get('end_date') == today_str and use_range %}active{% endif %}">
+          Today
+        </a>
+        <a href="{{ url_for('appointments.vanilla', start_date=yesterday_str, end_date=yesterday_str, use_range='on') }}" 
+           class="filter-btn {% if request.args.get('start_date') == yesterday_str and request.args.get('end_date') == yesterday_str and use_range %}active{% endif %}">
+          Yesterday
+        </a>
+        <a href="{{ url_for('appointments.vanilla', start_date=tomorrow_str, end_date=tomorrow_str, use_range='on') }}" 
+           class="filter-btn {% if request.args.get('start_date') == tomorrow_str and request.args.get('end_date') == tomorrow_str and use_range %}active{% endif %}">
+          Tomorrow
+        </a>
+        <a href="{{ url_for('appointments.vanilla') }}" 
+           class="filter-btn {% if not request.args.get('start_date') and not use_range %}active{% endif %}">
+          All Days
+        </a>
+      </div>
+
+      <!-- Main Filter Form -->
+      <div class="appt-filter-form">
+        <!-- Search and Doctor Row -->
+        <div class="appt-filter-row">
+          <div class="form-group">
+            <label class="form-label" for="search_term">Search Patient</label>
+            <input type="text" id="search_term" name="search_term" class="form-input" value="{{ request.args.get('search_term', '') }}" placeholder="Name, phone, or file...">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="doctor_id">Doctor</label>
+            <select id="doctor_id" name="doctor_id" class="form-select">
+              <option value="all" {% if selected_doctor == 'all' %}selected{% endif %}>All Doctors</option>
+              {% for doctor in doctors %}
+                <option value="{{ doctor.id }}" {% if selected_doctor|string == doctor.id|string %}selected{% endif %}>{{ doctor.doctor_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        
+        <!-- Date Filter Row -->
+        <div class="appt-filter-row-dates">
+          <div class="form-group">
+            <label class="form-label" for="start_date">Date</label>
+            <input type="date" id="start_date" name="start_date" class="form-input" value="{{ request.args.get('start_date', '') }}">
+          </div>
+          
+          <div class="form-group" id="end-date-group" style="visibility: {% if use_range %}visible{% else %}hidden{% endif %};">
+            <label class="form-label" for="end_date">End Date</label>
+            <input type="date" id="end_date" name="end_date" class="form-input" value="{{ request.args.get('end_date', '') }}">
+          </div>
+
+          <div class="form-group" style="justify-content: flex-end;">
+            <label class="form-checkbox-group">
+              <input type="checkbox" id="use_range_check" name="use_range" value="on" {% if use_range %}checked{% endif %}>
+              <span>Use Range</span>
+            </label>
+          </div>
+
+          <div class="form-group form-buttons-group">
+            <a href="{{ url_for('appointments.vanilla') }}" class="btn btn-secondary">Clear</a>
+            <button type="submit" class="btn btn-primary">Search</button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Appointment List -->
+  {% if grouped_appointments %}
+    {% for date_iso, appts in grouped_appointments.items() %}
+    <div class="appt-group">
+      <h2 class="appt-group-header">
+        {% if date_iso == today_str %}
+          <span class="date-day">Today</span> - {{ appts[0].start_time.strftime('%A, %B %d, %Y') }}
+        {% elif date_iso == yesterday_str %}
+          <span class="date-day">Yesterday</span> - {{ appts[0].start_time.strftime('%A, %B %d, %Y') }}
+        {% elif date_iso == tomorrow_str %}
+          <span class="date-day">Tomorrow</span> - {{ appts[0].start_time.strftime('%A, %B %d, %Y') }}
+        {% else %}
+          {{ appts[0].start_time.strftime('%A, %B %d, %Y') }}
+        {% endif %}
+        ({{ appts|length }})
+      </h2>
+      <div class="appt-card-grid">
+        {% for appt in appts %}
+        <div class="appt-card" data-appt-id="{{ appt.id }}">
+          
+          <!-- Patient Chip Header -->
+          <a href="{{ url_for('patients.patient_detail', pid=appt.patient.id) if appt.patient else '#' }}" target="_blank" class="appt-card-patient-chip">
+            <div class="appt-card-patient-name">{{ appt.patient.full_name }}</div>
+            <div class="appt-card-patient-details">
+              <span>📁 {{ appt.patient.short_id or '—' }}</span>
+              <span>📞 {{ appt.patient.phone or '—' }}</span>
+            </div>
+          </a>
+          
+          <!-- Card Body -->
+          <div class="appt-card-body">
+            <div class="appt-card-row">
+              <span class="appt-card-icon">🕒</span>
+              <strong>{{ appt.start_time.strftime('%I:%M %p') }}</strong>
+            </div>
+            <div class="appt-card-row">
+              <span class="appt-card-icon">👨‍⚕️</span>
+              <span>Dr. {{ appt.doctor.doctor_label }}</span>
+            </div>
+            <div class="appt-card-row appt-card-reason">
+              <span class="appt-card-icon">📝</span>
+              <span>{{ appt.title or 'No reason provided' }}</span>
+            </div>
+          </div>
+
+          <!-- Card Footer -->
+          <div class="appt-card-footer">
+            <button 
+              class="status-button status-{{ appt.status }}" 
+              onclick="openStatusModal('{{ appt.id }}', '{{ appt.status }}')">
+              {{ appt.status|capitalize }}
+            </button>
+            <!-- MODIFIED: Buttons back on one line, emojis removed -->
+            <div class="appt-card-footer-buttons">
+              <button class="btn btn-secondary btn-sm" onclick="openViewModal('{{ appt.id }}')">View</button>
+              <button class="btn btn-secondary btn-sm" onclick="openApptModal('{{ appt.id }}')">Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="openDeleteModal('{{ appt.id }}', {{ appt.patient.full_name | tojson }})">Delete</button>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="card no-appointments-card">
+      <div class="no-appointments-icon">🤷‍♂️</div>
+      <h2 class="card-title">No Appointments Found</h2>
+      <p class="no-appointments-text">Try adjusting your filters or selecting a different date.</p>
+    </div>
+  {% endif %}
+
 </div>
 
-<!-- JSON data injected from Flask -->
-<script type="application/json" id="appointments-data">{{ appointments_json | safe }}</script>
-<script type="application/json" id="patients-data">{{ patients_json | safe }}</script>
-<script type="application/json" id="doctors-data">{{ doctors_json | safe }}</script>
+<!-- --- MODALS --- -->
 
-<!-- 
-  All JavaScript logic is contained here.
-  It reads the data injected into the <head>.
--->
-{% raw %}
-<script type="module">
-        // === ICON LOADER ===
-        // Lucide icons need to be manually initialized
-        const loadIcons = () => {
-            try {
-                if (typeof lucide !== 'undefined' && lucide.createIcons) {
-                    lucide.createIcons();
-                } else {
-                    console.warn('Lucide icons library not loaded, icons will not display');
-                }
-            } catch (error) {
-                console.warn('Error loading Lucide icons:', error);
-            }
-        };
+<!-- Add/Edit Appointment Modal -->
+<div id="appt-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="appt-modal-title" class="modal-title">New Appointment</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="appt-alert" class="alert alert-error" style="display: none;"></div>
+      <form id="appt-form" class="admin-form">
+        <input type="hidden" id="appt-id" name="id">
 
-        // Fallback icon function for when Lucide fails
-        const createFallbackIcon = (iconName) => {
-            const fallbackIcons = {
-                'eye': '👁️',
-                'edit': '✏️',
-                'trash-2': '🗑️',
-                'plus': '+',
-                'search': '🔍',
-                'calendar': '📅',
-                'clock': '🕐',
-                'user': '👤',
-                'x': '✕'
-            };
-            return fallbackIcons[iconName] || '•';
-        };
+        <div class="form-group">
+          <label class="form-label">Patient *</label>
+          <select id="appt-patient" class="form-select" required>
+            <option value="">Select a patient...</option>
+            {% for p in all_patients %}
+            <option value="{{ p.id }}">{{ p.full_name }} ({{ p.short_id }})</option>
+            {% endfor %}
+          </select>
+        </div>
 
-        // Enhanced icon function that handles Lucide failures
-        const createIcon = (iconName) => {
-            try {
-                if (typeof lucide !== 'undefined' && lucide.createIcons) {
-                    const icon = document.createElement('i');
-                    icon.setAttribute('data-lucide', iconName);
-                    icon.className = 'w-4 h-4'; // Default size classes
-                    return icon.outerHTML;
-                }
-            } catch (e) {
-                // Fall back to emoji
-            }
-            return `<span class="fallback-icon">${createFallbackIcon(iconName)}</span>`;
-        };
-
-        // === TRANSLATIONS ===
-        const translations = {
-          en: {
-            appointments: 'Appointments',
-            searchPatient: 'Search Patient',
-            searchPlaceholder: 'Search by name, file number, or phone...',
-            date: 'Date',
-            allDays: 'All Days',
-            yesterday: 'Yesterday',
-            today: 'Today',
-            tomorrow: 'Tomorrow',
-            doctor: 'Doctor',
-            allDoctors: 'All Doctors',
-            customDate: 'Custom Date',
-            useRange: 'Use Range',
-            to: 'to',
-            total: 'Total',
-            done: 'Done',
-            scheduled: 'Scheduled',
-            view: 'View',
-            edit: 'Edit',
-            delete: 'Delete',
-            noAppointments: 'No Appointments Found',
-            noAppointmentsDesc: 'Try adjusting your filters or selecting a different date.',
-            file: 'File',
-            Scheduled: 'Scheduled',
-            Pending: 'Pending',
-            Cancelled: 'Cancelled',
-            Done: 'Done',
-            close: 'Close',
-            save: 'Save',
-            cancel: 'Cancel',
-            'Patient Name': 'Patient Name',
-            Phone: 'Phone',
-            Reason: 'Reason',
-            'Start Time': 'Start Time',
-            'End Time': 'End Time',
-            Status: 'Status',
-            Patient: 'Patient',
-            'Add Appointment': 'Add Appointment',
-            'Delete Appointment': 'Delete Appointment',
-            'delete-confirm': 'Are you sure you want to delete this appointment? This action cannot be undone.',
-            searchPatientsPlaceholder: 'Search by name, file, or phone...',
-            noPatientFound: 'No patient found.',
-            change: 'Change',
-          },
-          ar: {
-            appointments: 'المواعيد',
-            searchPatient: 'البحث عن مريض',
-            searchPlaceholder: 'البحث بالإسم، رقم الملف، أو الهاتف...',
-            date: 'التاريخ',
-            allDays: 'كل الأيام',
-            yesterday: 'الأمس',
-            today: 'اليوم',
-            tomorrow: 'غدًا',
-            doctor: 'الطبيب',
-            allDoctors: 'كل الأطباء',
-            customDate: 'تاريخ مخصص',
-            useRange: 'استخدام نطاق',
-            to: 'إلى',
-            total: 'الإجمالي',
-            done: 'مكتمل',
-            scheduled: 'مجدول',
-            view: 'عرض',
-            edit: 'تعديل',
-            delete: 'حذف',
-            noAppointments: 'لم يتم العثور على مواعيد',
-            noAppointmentsDesc: 'حاول تعديل الفلاتر أو اختيار تاريخ آخر.',
-            file: 'ملف',
-            Scheduled: 'مجدول',
-            Pending: 'قيد الانتظار',
-            Cancelled: 'ملغى',
-            Done: 'مكتمل',
-            close: 'إغلاق',
-            save: 'حفظ',
-            cancel: 'إلغاء',
-            'Patient Name': 'اسم المريض',
-            Phone: 'الهاتف',
-            Reason: 'السبب',
-            'Start Time': 'وقت البدء',
-            'End Time': 'وقت الانتهاء',
-            Status: 'الحالة',
-            Patient: 'المريض',
-            'Add Appointment': 'إضافة موعد',
-            'Delete Appointment': 'حذف الموعد',
-            'delete-confirm': 'هل أنت متأكد أنك تريد حذف هذا الموعد؟ لا يمكن التراجع عن هذا الإجراء.',
-            searchPatientsPlaceholder: 'البحث بالإسم، الملف، أو الهاتف...',
-            noPatientFound: 'لم يتم العثور على مريض.',
-            change: 'تغيير',
-          }
-        };
-
-        // === DATA LOADER ===
-        /**
-         * Safely parses JSON from an element's textContent.
-         * Handles empty strings, null, "None", and un-rendered Jinja2 variables.
-         */
-        function safeJsonParse(elementId, fallback = []) {
-            const element = document.getElementById(elementId);
-            if (!element) {
-                return Array.isArray(fallback) ? [...fallback] : fallback;
-            }
-            const content = (element.textContent || element.innerText || '').trim();
-
-            // Check for empty, "None", or an un-rendered template variable
-            if (!content || content.toLowerCase() === 'none' || content.indexOf('{{') === 0) {
-                return fallback;
-            }
-            try {
-                return JSON.parse(content);
-            } catch (error) {
-                // Failed to parse JSON, falling back to default value.
-                return fallback;
-            }
-        }
-
-        // Data is now read from the <script> tags near the content block
-        const backendAppointments = safeJsonParse('appointments-data', []);
-        const backendPatients = safeJsonParse('patients-data', []);
-        const backendDoctors = safeJsonParse('doctors-data', ['All Doctors']);
-
-        const mockPatients = Array.isArray(backendPatients) ? backendPatients : [];
-        const doctorsList = (() => {
-            if (!Array.isArray(backendDoctors) || backendDoctors.length === 0) {
-                return ['All Doctors'];
-            }
-            const seen = new Set();
-            const ordered = [];
-            backendDoctors.forEach((doctor) => {
-                if (!doctor) {
-                    return;
-                }
-                const label = typeof doctor === 'string' ? doctor : doctor.name || doctor.label || '';
-                if (!label) {
-                    return;
-                }
-                if (!seen.has(label)) {
-                    seen.add(label);
-                    ordered.push(label);
-                }
-            });
-            if (ordered[0] !== 'All Doctors') {
-                ordered.unshift('All Doctors');
-            }
-            return ordered;
-        })();
-
-        function normalizeAppointment(appt, index) {
-            if (!appt) {
-                return null;
-            }
-            return {
-                id: appt.id ?? `appt-${index + 1}`,
-                patientName: appt.patientName || appt.patient_name || '—',
-                phoneNumber: appt.phoneNumber || appt.patient_phone || '',
-                fileNumber: appt.fileNumber || appt.patient_short_id || '',
-                doctor: appt.doctor || appt.doctor_label || appt.doctor_id || '',
-                startTime: appt.startTime || appt.starts_at || '',
-                endTime: appt.endTime || appt.ends_at || '',
-                status: appt.status || appt.status_label || 'Scheduled',
-                reason: appt.reason || appt.title || '',
-            };
-        }
-
-        const normalizedAppointments = Array.isArray(backendAppointments)
-            ? backendAppointments.map(normalizeAppointment).filter(Boolean)
-            : [];
-        const initialAppointments = normalizedAppointments;
-
-        // === UTILITY FUNCTIONS ===
-        const getISODate = (dateStr) => new Date(dateStr).toISOString().split('T')[0];
-
-        const formatTime = (dateStr, locale = 'en-US') => {
-          if (!dateStr) return '';
-          return new Date(dateStr).toLocaleTimeString(locale, {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-          });
-        };
-
-        const formatDateHeader = (dateStr, t, locale = 'en-US') => {
-          const today = getISODate(new Date());
-          const tomorrow = getISODate(new Date(Date.now() + 24 * 60 * 60 * 1000));
-          const yesterday = getISODate(new Date(Date.now() - 24 * 60 * 60 * 1000));
-
-          const date = new Date(dateStr + 'T00:00:00');
-          const options = { month: 'long', day: 'numeric' };
-
-          if (dateStr === today) return `${t('today')}, ${date.toLocaleDateString(locale, options)}`;
-          if (dateStr === tomorrow) return `${t('tomorrow')}, ${date.toLocaleDateString(locale, options)}`;
-          if (dateStr === yesterday) return `${t('yesterday')}, ${date.toLocaleDateString(locale, options)}`;
-
-          return date.toLocaleDateString(locale, {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-          });
-        };
+        <div class="form-group">
+          <label class="form-label">Doctor *</label>
+          <select id="appt-doctor" class="form-select" required>
+            {% for d in doctors %}
+            <option value="{{ d.id }}">{{ d.doctor_label }}</option>
+            {% endfor %}
+          </select>
+        </div>
         
-        const toDateTimeLocal = (isoString) => {
-          if (!isoString) return '';
-          try {
-            const date = new Date(isoString);
-            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-            return (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16);
-          } catch (e) { return ''; }
-        };
-
-        const toTimeLocal = (isoString) => {
-          if (!isoString) return '';
-          try {
-            const date = new Date(isoString);
-            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-            const localTime = new Date(date.getTime() - tzoffset);
-            const hours = localTime.getUTCHours().toString().padStart(2, '0');
-            const minutes = localTime.getUTCMinutes().toString().padStart(2, '0');
-            return `${hours}:${minutes}`;
-          } catch (e) { return ''; }
-        };
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Date *</label>
+            <input type="date" id="appt-date" class="form-input" required value="{{ today_str }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Start Time *</label>
+            <input type="time" id="appt-start-time" class="form-input" required>
+          </div>
+        </div>
         
-        // === GLOBAL STATE ===
-        // We will manage our application state here, similar to React.
-        let state = {};
-        
-        /**
-         * A simple state update function that mimics React's setState.
-         * It merges the new state and re-renders the entire app.
-         */
-        function setState(newState) {
-            // Support functional updates, e.g., setState(prevState => ({...}))
-            if (typeof newState === 'function') {
-                state = newState(state);
-            } else {
-                state = { ...state, ...newState };
-            }
-            
-            // Save filters to localStorage whenever state changes
-            saveStateToLocalStorage();
-            
-            // Re-render the app
-            // We prevent re-render if only accordion state is changing
-            if (newState.openAccordions && Object.keys(newState).length === 1) {
-                // This is just an accordion toggle, don't re-render the whole app
-            } else {
-                 renderApp();
-            }
-        }
-        
-        function saveStateToLocalStorage() {
-            localStorage.setItem('appt_language', state.language);
-            localStorage.setItem('appt_activeDateFilter', state.activeDateFilter);
-            localStorage.setItem('appt_selectedDoctor', state.selectedDoctor);
-            localStorage.setItem('appt_customStartDate', state.customStartDate);
-            localStorage.setItem('appt_customEndDate', state.customEndDate);
-            localStorage.setItem('appt_useDateRange', JSON.stringify(state.useDateRange));
-            localStorage.setItem('appt_searchTerm', state.searchTerm);
-            // We don't save modal state, but we could save accordion state
-            // localStorage.setItem('appt_openAccordions', JSON.stringify(state.openAccordions));
-        }
-        
-        function loadStateFromLocalStorage() {
-            return {
-                language: localStorage.getItem('appt_language') || 'en',
-                appointments: initialAppointments, // This holds the "master list"
-                activeDateFilter: localStorage.getItem('appt_activeDateFilter') || 'Today',
-                selectedDoctor: localStorage.getItem('appt_selectedDoctor') || 'All Doctors',
-                customStartDate: localStorage.getItem('appt_customStartDate') || '',
-                customEndDate: localStorage.getItem('appt_customEndDate') || '',
-                useDateRange: JSON.parse(localStorage.getItem('appt_useDateRange')) || false,
-                searchTerm: localStorage.getItem('appt_searchTerm') || '',
-                isViewModalOpen: false,
-                isEditModalOpen: false,
-                isAddModalOpen: false,
-                selectedAppointment: null,
-                isDeleteModalOpen: false, 
-                appointmentToDelete: null, 
-                openAccordions: {}, // Added to save accordion state
-            };
-        }
+        <div class="form-group">
+          <label class="form-label">Status *</label>
+          <select id="appt-status" class="form-select" required>
+            <option value="scheduled">Scheduled</option>
+            <option value="checked_in">Pending</option>
+            <option value="done">Done</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
 
-        // Translation helper
-        function t(key) {
-            return translations[state.language][key] || key;
-        }
+        <div class="form-group">
+          <label class="form-label">Reason / Title</label>
+          <input type="text" id="appt-reason" class="form-input" placeholder="e.g., Checkup, Filling...">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button id="appt-submit-btn" class="btn btn-primary" onclick="saveAppt()">Create Appointment</button>
+    </div>
+  </div>
+</div>
 
-        // === EVENT HANDLERS ===
-        // These functions update the global state.
-        
-        function handleStatusChange(apptId, newStatus) {
-            // This function should be updated to call your API
-            console.log(`API Call (Simulation): Update appointment ${apptId} to ${newStatus}`);
-            const newAppointments = state.appointments.map(appt =>
-                appt.id === apptId ? { ...appt, status: newStatus } : appt
-            );
-            setState({ appointments: newAppointments });
-        }
+<!-- View Modal -->
+<div id="view-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">View Appointment</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="view-alert" class="alert alert-error" style="display: none;"></div>
+      <div id="view-content" class="admin-form">
+        <!-- Content will be loaded here by JavaScript -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
 
-        function handleOpenViewModal(appt) {
-            // MODIFIED: Don't call setState, just render the modal.
-            // This prevents the whole app from re-rendering and accordions closing.
-            const modalContainer = document.getElementById('modal-container');
-            modalContainer.innerHTML = ''; // Clear any existing modal
-            modalContainer.appendChild(createViewModal(appt));
-            loadIcons();
-        }
-        
-        function handleOpenEditModal(appt) {
-            // MODIFIED: Don't call setState
-            const modalContainer = document.getElementById('modal-container');
-            modalContainer.innerHTML = '';
-            modalContainer.appendChild(createEditModal(appt));
-            loadIcons();
-        }
-        
-        function handleOpenAddModal() {
-             // MODIFIED: Don't call setState
-            const modalContainer = document.getElementById('modal-container');
-            modalContainer.innerHTML = '';
-            modalContainer.appendChild(createAddModal());
-            loadIcons();
-        }
+<!-- Change Status Modal -->
+<div id="status-modal" class="modal">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-header">
+      <h3 class="modal-title">Change Status</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="status-appt-id">
+      <div id="status-alert" class="alert alert-error" style="display: none;"></div>
+      <div class="status-modal-grid">
+        <button class="btn status-modal-btn status-scheduled" onclick="updateStatus('scheduled')">Scheduled</button>
+        <button class="btn status-modal-btn status-checked_in" onclick="updateStatus('checked_in')">Pending</button>
+        <button class="btn status-modal-btn status-done" onclick="updateStatus('done')">Done</button>
+        <button class="btn status-modal-btn status-cancelled" onclick="updateStatus('cancelled')">Cancelled</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-        function handleOpenDeleteModal(apptId) {
-             // MODIFIED: Don't call setState
-            const modalContainer = document.getElementById('modal-container');
-            modalContainer.innerHTML = '';
-            modalContainer.appendChild(createDeleteModal(apptId));
-            loadIcons();
-        }
-        
-        function handleCloseModals() {
-            // MODIFIED: Don't call setState, just clear the modal container
-            const modalContainer = document.getElementById('modal-container');
-            modalContainer.innerHTML = '';
-        }
+<!-- Delete Modal -->
+<div id="delete-modal" class="modal">
+  <div class="modal-content" style="max-width: 450px;">
+    <div class="modal-header">
+      <h3 class="modal-title">Delete Appointment</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="delete-id">
+      <p>Are you sure you want to delete the appointment for <strong id="delete-name"></strong>? This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button id="delete-submit-btn" class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
 
-        function handleUpdateAppointment(updatedAppt) {
-            // This function should be updated to call your API
-            console.log("API Call (Simulation): Update appointment", updatedAppt);
-            const newAppointments = state.appointments.map(appt => 
-                appt.id === updatedAppt.id ? updatedAppt : appt
-            );
-            // Now we call setState to update the list
-            setState({ appointments: newAppointments });
-            handleCloseModals();
-        }
+<script>
+// This is a small script, just like your admin_settings.html
+// It only handles modals and the "Use Range" checkbox.
 
-        function handleSaveNewAppointment(newApptData) {
-            // This function should be updated to call your API
-            console.log("API Call (Simulation): Add new appointment", newApptData);
-            const newAppointment = {
-                ...newApptData,
-                id: Math.max(0, ...state.appointments.map(a => a.id)) + 1, // Simple ID
-            };
-            const newAppointments = [...state.appointments, newAppointment]
-                .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-            
-            setState({ appointments: newAppointments });
-            handleCloseModals();
-        }
+// Get CSRF token from meta tag
+const csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
+const CSRF_TOKEN = csrfMetaTag ? (csrfMetaTag.getAttribute('content') || '') : '';
 
-        function handleDeleteAppointment(apptId) {
-            handleOpenDeleteModal(apptId);
-        }
-        
-        function handleConfirmDelete(apptId) {
-            if (!apptId) return;
+// --- Modal Functions ---
+function openApptModal(apptId = null) {
+  const modal = document.getElementById('appt-modal');
+  const title = document.getElementById('appt-modal-title');
+  const submitBtn = document.getElementById('appt-submit-btn');
+  const alert = document.getElementById('appt-alert');
+  
+  alert.style.display = 'none';
+  document.getElementById('appt-form').reset();
+  document.getElementById('appt-id').value = '';
+  
+  const today = document.getElementById('appt-form-main').dataset.today || new Date().toISOString().split('T')[0];
+  document.getElementById('appt-date').value = today; // Default to today
 
-            // This function should be updated to call your API
-            console.log("API Call (Simulation): DELETE confirmed:", apptId);
-            const newAppointments = state.appointments.filter(a => a.id !== apptId);
-            
-            setState({ 
-                appointments: newAppointments
-            });
-            handleCloseModals();
-        }
-        
-        function handleDateFilterClick(filter) {
-            const newState = { activeDateFilter: filter };
-            if (filter !== 'Custom') {
-                newState.customStartDate = '';
-                newState.customEndDate = '';
-            }
-            setState(newState);
-        }
+  if (apptId) {
+    // This is an EDIT
+    title.textContent = 'Edit Appointment';
+    submitBtn.textContent = 'Update Appointment';
+    loadApptData(apptId, 'edit');
+  } else {
+    // This is a NEW appointment
+    title.textContent = 'New Appointment';
+    submitBtn.textContent = 'Create Appointment';
+    modal.classList.add('active');
+  }
+}
 
-        // === HTML TEMPLATE FUNCTIONS ===
-        
-        /** Creates a DOM element from an HTML string */
-        function createElement(html) {
-            const template = document.createElement('template');
-            template.innerHTML = html.trim();
-            return template.content.firstChild;
-        }
+function openViewModal(apptId) {
+  const modal = document.getElementById('view-modal');
+  const content = document.getElementById('view-content');
+  const alert = document.getElementById('view-alert');
+  content.innerHTML = '<p>Loading...</p>';
+  alert.style.display = 'none';
+  modal.classList.add('active');
+  loadApptData(apptId, 'view');
+}
 
-        function createStatusBadge(status, onChange) {
-            const styles = {
-                Scheduled: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-                Pending: 'bg-orange-100 text-orange-800 border-orange-200',
-                Cancelled: 'bg-red-100 text-red-800 border-red-200',
-                Done: 'bg-green-200 text-green-900 border-green-300',
-            };
-            const allStatuses = ['Scheduled', 'Pending', 'Cancelled', 'Done'];
+function openStatusModal(apptId, currentStatus) {
+  document.getElementById('status-appt-id').value = apptId;
+  document.querySelectorAll('.status-modal-btn').forEach(btn => {
+    btn.disabled = false;
+    if (btn.classList.contains('status-' + currentStatus)) {
+      btn.disabled = true;
+    }
+  });
+  document.getElementById('status-modal').classList.add('active');
+}
 
-            const select = createElement(String.raw`
-                <select
-                  class="px-3 py-1 text-xs font-medium rounded-full transition-colors border ${styles[status] || 'bg-gray-100 text-gray-800 border-gray-200'} appearance-none focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
-                  style="padding-right: 1.75rem; background-image: url(&quot;data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e&quot;); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1em 1em;"
-                >
-                </select>
-            `);
-            
-            allStatuses.forEach(s => {
-                const option = createElement(`<option value="${s}">${t(s)}</option>`);
-                select.appendChild(option);
-            });
-            
-            select.value = status;
-            select.addEventListener('change', onChange);
-            return select;
-        }
+async function loadApptData(apptId, mode = 'edit') {
+  const alert = document.getElementById(mode === 'edit' ? 'appt-alert' : 'view-alert');
+  try {
+    const response = await fetch(`/api/appointments/${apptId}`, { credentials: 'same-origin' });
+    if (!response.ok) {
+        throw new Error(`Server responded with status ${response.status}`);
+    }
+    const appt = await response.json();
 
-        function createAppointmentCard(appt) {
-            const locale = state.language === 'ar' ? 'ar-EG' : 'en-US';
-            
-            const getCardStyle = (status) => {
-                switch (status) {
-                  case 'Done': return 'bg-green-100 border-green-300';
-                  case 'Pending': return 'bg-orange-100 border-orange-300';
-                  case 'Cancelled': return 'bg-red-100 border-red-300';
-                  default: return 'bg-gray-50 border-gray-200';
-                }
-            };
-            
-            const card = createElement(String.raw`
-                <div class="rounded-lg shadow-sm border overflow-hidden ${getCardStyle(appt.status)}">
-                  <div class="p-4 relative">
-                    <div class="absolute top-4 end-4">
-                      <!-- StatusBadge will be appended here -->
-                    </div>
-                    
-                    <!-- MODIFIED: Patient Info Chip -->
-                    <div class="mb-3">
-                       <a href="#" class="group" data-filenumber="${appt.fileNumber}">
-                        <span class="inline-block bg-blue-100 text-blue-800 text-sm font-semibold px-4 py-2 rounded-lg group-hover:bg-blue-200 transition-colors">
-                          <strong class="block text-base">${appt.patientName}</strong>
-                          <span class="block text-xs font-normal mt-1">📁 ${t('file')}: ${appt.fileNumber}</span>
-                          <span class="block text-xs font-normal">📞 ${appt.phoneNumber}</span>
-                        </span>
-                      </a>
-                    </div>
+    if (appt.error) { throw new Error(appt.error); }
+    
+    // Format date/time for inputs
+    const start = new Date(appt.start_time);
+    
+    // Handle timezone offset for date/time inputs
+    const toLocalISOString = (date) => {
+        const offset = date.getTimezoneOffset() * 60000;
+        const localDate = new Date(date.getTime() - offset);
+        return localDate.toISOString();
+    }
+    
+    const localStart = toLocalISOString(start);
+    
+    if (mode === 'edit') {
+      document.getElementById('appt-id').value = appt.id;
+      document.getElementById('appt-patient').value = appt.patient_id;
+      document.getElementById('appt-doctor').value = appt.doctor_id;
+      document.getElementById('appt-status').value = appt.status;
+      document.getElementById('appt-reason').value = appt.title || '';
+      document.getElementById('appt-date').value = localStart.split('T')[0];
+      document.getElementById('appt-start-time').value = localStart.split('T')[1].substring(0, 5);
+      // We don't need end time, it's calculated
+      document.getElementById('appt-modal').classList.add('active');
+    } else {
+      // Build View Modal Content
+      const contentEl = document.getElementById('view-content');
+      contentEl.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Patient</label>
+          <div class="form-input" style="background:#f9fafb;">${appt.patient_name}</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Time</label>
+          <div class="form-input" style="background:#f9fafb;">${start.toLocaleString('en-US', {dateStyle: 'long', timeStyle: 'short'})}</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Doctor</label>
+          <div class="form-input" style="background:#f9fafb;">${appt.doctor_name}</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <div class="form-input" style="background:#f9fafb;">${appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reason</label>
+          <div class="form-input" style="background:#f9fafb; min-height: 60px;">${appt.title || '—'}</div>
+        </div>
+      `;
+    }
 
-                    <p class="text-sm text-gray-600 mb-4 pt-1">${appt.reason || ''}</p>
-                    <div class="space-y-3 text-sm">
-                      <!-- NEW: Date Chip -->
-                      <div class="flex items-center text-gray-700">
-                        <i data-lucide="calendar" class="w-4 h-4 me-2 text-blue-500"></i>
-                        <span class="bg-gray-200 text-gray-800 px-3 py-1 rounded-full text-xs font-medium">
-                          ${new Date(appt.startTime).toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' })}
-                        </span>
-                      </div>
-                      <div class="flex items-center text-gray-700">
-                        <i data-lucide="clock" class="w-4 h-4 me-2 text-blue-500"></i>
-                        <span>
-                          ${formatTime(appt.startTime, locale)} - ${formatTime(appt.endTime, locale)}
-                        </span>
-                      </div>
-                      <div class="flex items-center text-gray-700">
-                        <i data-lucide="user" class="w-4 h-4 me-2 text-blue-500"></i>
-                        <span class="bg-gray-200 text-gray-800 px-3 py-1 rounded-full text-xs font-medium">
-                          ${appt.doctor}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="bg-gray-100 px-4 py-3 border-t border-gray-200 flex justify-end gap-2">
-                    <button data-action="view" class="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 flex items-center gap-1">
-                      <i data-lucide="eye" class="w-3 h-3"></i> ${t('view')}
-                    </button>
-                    <button data-action="edit" class="px-3 py-1 text-xs font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600 flex items-center gap-1">
-                      <i data-lucide="edit" class="w-3 h-3"></i> ${t('edit')}
-                    </button>
-                    <button data-action="delete" class="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700 flex items-center gap-1">
-                      <i data-lucide="trash-2" class="w-3 h-3"></i> ${t('delete')}
-                    </button>
-                  </div>
-                </div>
-            `);
+  } catch (error) {
+    alert.textContent = 'Error loading appointment data: ' + error.message;
+    alert.style.display = 'block';
+  }
+}
 
-            // Add StatusBadge
-            const statusBadge = createStatusBadge(appt.status, (e) => {
-                handleStatusChange(appt.id, e.target.value);
-            });
-            card.querySelector('.absolute.top-4').appendChild(statusBadge);
+async function saveAppt() {
+  const submitBtn = document.getElementById('appt-submit-btn');
+  const alert = document.getElementById('appt-alert');
+  
+  const apptData = {
+    id: document.getElementById('appt-id').value || null,
+    patient_id: document.getElementById('appt-patient').value,
+    doctor_id: document.getElementById('appt-doctor').value,
+    date: document.getElementById('appt-date').value,
+    start_time: document.getElementById('appt-start-time').value,
+    // End time is no longer sent from here
+    status: document.getElementById('appt-status').value,
+    title: document.getElementById('appt-reason').value
+  };
 
-            // Add event listeners for buttons
-            card.querySelector('[data-action="view"]').addEventListener('click', () => handleOpenViewModal(appt));
-            card.querySelector('[data-action="edit"]').addEventListener('click', () => handleOpenEditModal(appt));
-            card.querySelector('[data-action="delete"]').addEventListener('click', () => handleDeleteAppointment(appt.id));
-            
-            // Patient click listener
-            card.querySelector('a[data-filenumber]').addEventListener('click', (e) => {
-                e.preventDefault();
-                console.log(`Navigating to patient file: ${appt.fileNumber}`);
-            });
+  // Validation
+  if (!apptData.patient_id || !apptData.doctor_id || !apptData.date || !apptData.start_time) {
+    alert.textContent = 'Please fill in all required fields (*).';
+    alert.style.display = 'block';
+    return;
+  }
 
-            return card;
-        }
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Saving...';
+  submitBtn.classList.add('loading');
 
-        function createDateGroup(date, appointments) {
-            const locale = state.language === 'ar' ? 'ar-EG' : 'en-US';
-            const today = getISODate(new Date());
-            
-            // MODIFIED: Read open state from global state
-            const defaultOpen = date === today && state.activeDateFilter === 'Today';
-            // On first load, openAccordions[date] will be undefined, so use defaultOpen.
-            // After that, use the stored state.
-            let isOpen = state.openAccordions[date] === undefined ? defaultOpen : state.openAccordions[date];
-            
-            const totalCount = appointments.length;
-            const doneCount = appointments.filter(a => a.status === 'Done').length;
-            const scheduledCount = appointments.filter(a => a.status === 'Scheduled').length;
+  try {
+    const response = await fetch('/api/appointments/save', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify(apptData)
+    });
+    const result = await response.json();
 
-            const group = createElement(String.raw`
-                <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                  <button class="flex justify-between items-center w-full p-4 text-start">
-                    <span class="text-lg font-semibold text-gray-800">
-                      ${formatDateHeader(date, t, locale)}
-                    </span>
-                    <div class="flex items-center">
-                      <span class="text-sm font-medium text-gray-500 me-3">
-                        <span class="font-bold text-gray-700">${t('total')} ${totalCount}</span>
-                        <span class="ms-2">(${t('done')} ${doneCount}, ${t('scheduled')} ${scheduledCount})</span>
-                      </span>
-                      <i data-lucide="chevron-down" class="w-5 h-5 text-gray-500 transition-transform duration-200"></i>
-                    </div>
-                  </button>
-                  <div class="p-4 bg-white border-t border-gray-200" style="display: none;">
-                    <div class="space-y-4">
-                      <!-- Appointment cards go here -->
-                    </div>
-                  </div>
-                </div>
-            `);
+    if (result.success) {
+      closeModal();
+      location.reload(); // Easiest way to show the new data
+    } else {
+      alert.textContent = result.error || 'Failed to save appointment.';
+      alert.style.display = 'block';
+    }
+  } catch (error) {
+    alert.textContent = 'An error occurred: ' + error.message;
+    alert.style.display = 'block';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = apptData.id ? 'Update Appointment' : 'Create Appointment';
+    submitBtn.classList.remove('loading');
+  }
+}
 
-            const content = group.querySelector('.p-4.bg-white');
-            const chevron = group.querySelector('[data-lucide="chevron-down"]');
-            
-            // MODIFIED: Toggle logic now updates global state
-            const toggle = () => {
-                isOpen = !isOpen; // Update local-in-closure state
-                // Update global state
-                state.openAccordions[date] = isOpen;
-                // Manually update UI instead of full re-render
-                content.style.display = isOpen ? 'block' : 'none';
-                chevron.style.transform = isOpen ? 'rotate(180deg)' : '';
-            };
-            
-            group.querySelector('button').addEventListener('click', toggle);
-            
-            // Add cards
-            const cardContainer = group.querySelector('.space-y-4');
-            appointments.forEach(appt => {
-                cardContainer.appendChild(createAppointmentCard(appt));
-            });
+async function updateStatus(newStatus) {
+  const apptId = document.getElementById('status-appt-id').value;
+  const alert = document.getElementById('status-alert');
+  alert.style.display = 'none';
 
-            // MODIFIED: Set initial state based on state-aware 'isOpen'
-            if (isOpen) {
-                content.style.display = 'block';
-                chevron.style.transform = 'rotate(180deg)';
-            }
+  try {
+    const response = await fetch('/api/appointments/status', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ id: apptId, status: newStatus })
+    });
+    const result = await response.json();
 
-            return group;
-        }
+    if (result.success) {
+      closeModal();
+      location.reload();
+    } else {
+      alert.textContent = result.error || 'Failed to update status.';
+      alert.style.display = 'block';
+    }
+  } catch (error) {
+    alert.textContent = 'An error occurred: ' + error.message;
+    alert.style.display = 'block';
+  }
+}
 
-        function createModal({ title, contentElement, onClose }) {
-            const modal = createElement(String.raw`
-                <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-                  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden" id="modal-content-wrapper">
-                    <div class="flex justify-between items-center p-4 border-b">
-                      <h2 class="text-xl font-semibold">${title}</h2>
-                      <button class="close-btn text-gray-500 hover:text-gray-700">
-                        <i data-lucide="x" class="w-5 h-5"></i>
-                      </button>
-                    </div>
-                    <div class="p-6 max-h-[70vh] overflow-y-auto modal-content">
-                      <!-- Content goes here -->
-                    </div>
-                  </div>
-                </div>
-            `);
-            
-            modal.querySelector('.modal-content').appendChild(contentElement);
-            
-            // Close logic
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) onClose(); // Only close if clicking overlay
-            });
-            modal.querySelector('#modal-content-wrapper').addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent clicks inside modal from closing it
-            });
-            modal.querySelector('.close-btn').addEventListener('click', onClose);
-            
-            return modal;
-        }
+function openDeleteModal(apptId, patientName) {
+  document.getElementById('delete-id').value = apptId;
+  document.getElementById('delete-name').textContent = patientName;
+  document.getElementById('delete-modal').classList.add('active');
+}
 
-        function createViewModal(appt) {
-            const locale = state.language === 'ar' ? 'ar-EG' : 'en-US';
-            const formatFullDateTime = (dateStr) => {
-                return new Date(dateStr).toLocaleString(locale, {
-                  dateStyle: 'long',
-                  timeStyle: 'short',
-                });
-            };
+async function confirmDelete() {
+  const submitBtn = document.getElementById('delete-submit-btn');
+  const apptId = document.getElementById('delete-id').value;
+  
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Deleting...';
+  submitBtn.classList.add('loading');
 
-            const content = createElement('<dl class="divide-y divide-gray-200"></dl>');
-            
-            const InfoRow = (label, value, iconHtml) => {
-                const row = createElement(String.raw`
-                    <div class="py-3 grid grid-cols-3 gap-4">
-                      <dt class="text-sm font-medium text-gray-500 flex items-center">${iconHtml} ${t(label)}</dt>
-                      <dd class="text-sm text-gray-900 col-span-2"></dd>
-                    </div>
-                `);
-                
-                if (label === 'Status') {
-                    row.querySelector('dd').appendChild(createStatusBadge(value, () => {}));
-                } else {
-                    row.querySelector('dd').textContent = value;
-                }
-                return row;
-            };
+  try {
+    const response = await fetch('/api/appointments/delete', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ id: apptId })
+    });
+    const result = await response.json();
 
-            content.appendChild(InfoRow('Patient', appt.patientName, '<i data-lucide="user" class="w-4 h-4 me-2 text-gray-400"></i>'));
-            content.appendChild(InfoRow('file', appt.fileNumber, '<span class="w-4 me-2 text-center">📁</span>'));
-            content.appendChild(InfoRow('Phone', appt.phoneNumber, '<span class="w-4 me-2 text-center">📞</span>'));
-            content.appendChild(InfoRow('doctor', appt.doctor, '<i data-lucide="user" class="w-4 h-4 me-2 text-gray-400"></i>'));
-            content.appendChild(InfoRow('Reason', appt.reason, '<span class="w-4 me-2 text-center">📝</span>'));
-            content.appendChild(InfoRow('Status', appt.status, '<span class="w-4 me-2 text-center">🏷️</span>'));
-            content.appendChild(InfoRow('Start Time', formatFullDateTime(appt.startTime), '<i data-lucide="clock" class="w-4 h-4 me-2 text-gray-400"></i>'));
-            content.appendChild(InfoRow('End Time', formatFullDateTime(appt.endTime), '<i data-lucide="clock" class="w-4 h-4 me-2 text-gray-400"></i>'));
-            
-            const closeButton = createElement(String.raw`
-                <div class="mt-6 flex justify-end">
-                  <button class="px-4 py-2 text-sm font-medium rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300">
-                    ${t('close')}
-                  </button>
-                </div>
-            `);
-            closeButton.querySelector('button').addEventListener('click', handleCloseModals);
-            content.appendChild(closeButton);
+    if (result.success) {
+      closeModal();
+      location.reload();
+    } else {
+      alert(result.error || 'Failed to delete appointment.');
+    }
+  } catch (error) {
+    alert('An error occurred: ' + error.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Delete';
+    submitBtn.classList.remove('loading');
+  }
+}
 
-            return createModal({ title: t('view') + ' ' + t('appointments'), contentElement: content, onClose: handleCloseModals });
-        }
-        
-        function createEditModal(appt) {
-            const locale = state.language === 'ar' ? 'ar-EG' : 'en-US';
-            const allStatuses = ['Scheduled', 'Pending', 'Cancelled', 'Done'];
-            const allDoctors = [...doctorsList.slice(1)];
-            
-            const content = createElement(String.raw`
-                <form>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Patient Name -->
-                    <div class="mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('Patient Name')}</label>
-                      <input type="text" value="${appt.patientName}" class="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm text-gray-500" readonly />
-                    </div>
-                    <!-- Phone -->
-                    <div class="mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('Phone')}</label>
-                      <input type="text" value="${appt.phoneNumber}" class="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm text-gray-500" readonly />
-                    </div>
-                    <!-- File -->
-                    <div class="mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('file')}</label>
-                      <input type="text" value="${appt.fileNumber}" class="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm text-gray-500" readonly />
-                    </div>
-                    <!-- Doctor -->
-                    <div class="mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('doctor')}</label>
-                      <select name="doctor" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                        ${allDoctors.map(doc => `<option value="${doc}" ${doc === appt.doctor ? 'selected' : ''}>${doc}</option>`).join('')}
-                      </select>
-                    </div>
-                    <!-- Start Time -->
-                    <div class="mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('Start Time')}</label>
-                      <span class="text-sm text-gray-500 mb-1 block">${formatDateHeader(appt.startTime, t, locale)}</span>
-                      <input type="time" name="startTime" value="${toTimeLocal(appt.startTime)}" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-                    </div>
-                    <!-- End Time -->
-                    <div class="mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('End Time')}</label>
-                      <span class="text-sm text-gray-500 mb-1 block">${formatDateHeader(appt.endTime, t, locale)}</span>
-                      <input type="time" name="endTime" value="${toTimeLocal(appt.endTime)}" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-                    </div>
-                    <!-- Status -->
-                    <div class="mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('Status')}</label>
-                      <select name="status" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                        ${allStatuses.map(s => `<option value="${s}" ${s === appt.status ? 'selected' : ''}>${t(s)}</option>`).join('')}
-                      </select>
-                    </div>
-                    <!-- Reason -->
-                    <div class="md:col-span-2 mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('Reason')}</label>
-                      <textarea name="reason" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" rows="3">${appt.reason || ''}</textarea>
-                    </div>
-                  </div>
-                  <div class="mt-6 flex justify-end gap-3">
-                    <button type="button" id="cancel-btn" class="px-4 py-2 text-sm font-medium rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300">
-                      ${t('cancel')}
-                    </button>
-                    <button type="submit" class="px-4 py-2 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700">
-                      ${t('save')}
-                    </button>
-                  </div>
-                </form>
-            `);
-            
-            content.querySelector('#cancel-btn').addEventListener('click', handleCloseModals);
-            content.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const originalDate = getISODate(appt.startTime);
-                
-                const updatedAppt = {
-                    ...appt,
-                    doctor: formData.get('doctor'),
-                    status: formData.get('status'),
-                    reason: formData.get('reason'),
-                    startTime: new Date(`${originalDate}T${formData.get('startTime')}`).toISOString(),
-                    endTime: new Date(`${originalDate}T${formData.get('endTime')}`).toISOString(),
-                };
-                handleUpdateAppointment(updatedAppt);
-            });
+function closeModal() {
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.classList.remove('active');
+  });
+}
 
-            return createModal({ title: t('edit') + ' ' + t('appointments'), contentElement: content, onClose: handleCloseModals });
-        }
-        
-        function createDeleteModal(apptId) {
-            const content = createElement(String.raw`
-                <div>
-                  <p class="text-sm text-gray-700">
-                    ${t('delete-confirm')}
-                  </p>
-                  <div class="mt-6 flex justify-end gap-3">
-                    <button type="button" id="cancel-btn" class="px-4 py-2 text-sm font-medium rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300">
-                      ${t('cancel')}
-                    </button>
-                    <button type="button" id="confirm-delete-btn" class="px-4 py-2 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700">
-                      ${t('delete')}
-                    </button>
-                  </div>
-                </div>
-            `);
-            
-            content.querySelector('#cancel-btn').addEventListener('click', handleCloseModals);
-            content.querySelector('#confirm-delete-btn').addEventListener('click', () => handleConfirmDelete(apptId));
+// --- Checkbox Logic ---
+document.addEventListener('DOMContentLoaded', function() {
+  const useRangeCheckbox = document.getElementById('use_range_check');
+  const endDateGroup = document.getElementById('end-date-group');
+  const startDateInput = document.getElementById('start_date');
+  const endDateInput = document.getElementById('end_date');
 
-            return createModal({ title: t('Delete Appointment'), contentElement: content, onClose: handleCloseModals });
-        }
-        
-        function createAddModal() {
-            const allStatuses = ['Scheduled', 'Pending', 'Cancelled', 'Done'];
-            const allDoctors = [...doctorsList.slice(1)];
-            let selectedPatient = null; // Local state for this modal
-            
-            const content = createElement(String.raw`
-                <form>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Patient Search -->
-                    <div class="md:col-span-2 mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('Patient')}</label>
-                      <div id="patient-search-container">
-                        <!-- Search input will go here -->
-                      </div>
-                    </div>
-                    
-                    <!-- Other fields -->
-                    <div class="mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('doctor')}</label>
-                      <select name="doctor" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                        ${allDoctors.map(doc => `<option value="${doc}">${doc}</option>`).join('')}
-                      </select>
-                    </div>
-                    <div class="mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('Status')}</label>
-                      <select name="status" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                        ${allStatuses.map(s => `<option value="${s}" ${s === 'Scheduled' ? 'selected' : ''}>${t(s)}</option>`).join('')}
-                      </select>
-                    </div>
-                    <div class="mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('Start Time')}</label>
-                      <input type="datetime-local" name="startTime" value="${toDateTimeLocal(new Date().toISOString())}" required class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-                    </div>
-                    <div class="mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('End Time')}</label>
-                      <input type="datetime-local" name="endTime" value="${toDateTimeLocal(new Date(Date.now() + 30 * 60 * 1000).toISOString())}" required class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-                    </div>
-                    <div class="md:col-span-2 mb-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">${t('Reason')}</label>
-                      <textarea name="reason" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" rows="3"></textarea>
-                    </div>
-                  </div>
-                  <div class="mt-6 flex justify-end gap-3">
-                    <button type="button" id="cancel-btn" class="px-4 py-2 text-sm font-medium rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300">
-                      ${t('cancel')}
-                    </button>
-                    <button type="submit" id="save-btn" class="px-4 py-2 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                      ${t('save')}
-                    </button>
-                  </div>
-                </form>
-            `);
-            
-            const searchContainer = content.querySelector('#patient-search-container');
-            const saveButton = content.querySelector('#save-btn');
-            saveButton.disabled = true;
+  // Set initial visibility state on load
+  const setEndDateVisibility = () => {
+    if (useRangeCheckbox.checked) {
+      endDateGroup.style.visibility = 'visible';
+    } else {
+      endDateGroup.style.visibility = 'hidden';
+    }
+  };
+  
+  setEndDateVisibility(); // Run on page load
 
-            const renderPatientSearch = () => {
-                searchContainer.innerHTML = ''; // Clear
-                if (selectedPatient) {
-                    const chip = createElement(String.raw`
-                        <div class="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-md">
-                          <div>
-                            <p class="font-semibold text-blue-800">${selectedPatient.name}</p>
-                            <p class="text-sm text-blue-600">${selectedPatient.fileNumber} | ${selectedPatient.phoneNumber}</p>
-                          </div>
-                          <button type="button" id="change-patient-btn" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                            ${t('change')}
-                          </button>
-                        </div>
-                    `);
-                    chip.querySelector('#change-patient-btn').addEventListener('click', () => {
-                        selectedPatient = null;
-                        saveButton.disabled = true;
-                        renderPatientSearch();
-                    });
-                    searchContainer.appendChild(chip);
-                } else {
-                    const searchBox = createElement(String.raw`
-                        <div class="relative">
-                          <input type="text" placeholder="${t('searchPatientsPlaceholder')}"
-                            class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-                          <div id="search-results" class="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-48 overflow-y-auto shadow-lg" style="display: none;">
-                          </div>
-                        </div>
-                    `);
-                    const input = searchBox.querySelector('input');
-                    const resultsBox = searchBox.querySelector('#search-results');
-                    
-                    input.addEventListener('input', (e) => {
-                        // This should be updated to call your API
-                        // fetch(`/api/patients/search?q=${e.target.value}`)
-                        // .then(res => res.json())
-                        // .then(filtered => { ... })
-                        
-                        const term = e.target.value.toLowerCase();
-                        if (!term) {
-                            resultsBox.style.display = 'none';
-                            return;
-                        }
-                        
-                        const filtered = mockPatients.filter(p =>
-                          p.name.toLowerCase().includes(term) ||
-                          (p.fileNumber && p.fileNumber.toLowerCase().includes(term)) ||
-                          (p.phoneNumber && p.phoneNumber.includes(term))
-                        ).slice(0, 5);
-                        
-                        resultsBox.innerHTML = '';
-                        if (filtered.length > 0) {
-                            filtered.forEach(p => {
-                                const item = createElement(String.raw`
-                                    <div class="p-3 hover:bg-gray-100 cursor-pointer">
-                                      <p class="font-semibold">${p.name}</p>
-                                      <p class="text-sm text-gray-500">${p.fileNumber} | ${p.phoneNumber}</p>
-                                    </div>
-                                `);
-                                item.addEventListener('click', () => {
-                                    selectedPatient = p;
-                                    saveButton.disabled = false;
-                                    renderPatientSearch();
-                                });
-                                resultsBox.appendChild(item);
-                            });
-                        } else {
-                            resultsBox.innerHTML = `<div class="p-3 text-gray-500">${t('noPatientFound')}</div>`;
-                        }
-                        resultsBox.style.display = 'block';
-                    });
-                    searchContainer.appendChild(searchBox);
-                }
-            };
-            
-            renderPatientSearch(); // Initial render
+  useRangeCheckbox.addEventListener('change', function() {
+    setEndDateVisibility(); // Run on change
+    if (!this.checked) {
+      endDateInput.value = startDateInput.value; // Set end date to start date if range is off
+    }
+  });
 
-            content.querySelector('#cancel-btn').addEventListener('click', handleCloseModals);
-            content.addEventListener('submit', (e) => {
-                e.preventDefault();
-                if (!selectedPatient) return;
-                
-                const formData = new FormData(e.target);
-                const newApptData = {
-                    patientName: selectedPatient.name, 
-                    phoneNumber: selectedPatient.phoneNumber,
-                    fileNumber: selectedPatient.fileNumber,
-                    doctor: formData.get('doctor'),
-                    status: formData.get('status'),
-                    reason: formData.get('reason'),
-                    startTime: new Date(formData.get('startTime')).toISOString(),
-                    endTime: new Date(formData.get('endTime')).toISOString(),
-                };
-                handleSaveNewAppointment(newApptData);
-            });
-            
-            return createModal({ title: t('Add Appointment'), contentElement: content, onClose: handleCloseModals });
-        }
-        
-        function createFilterBar() {
-            const dateFilterButtons = [
-              { key: 'allDays', label: 'All Days' },
-              { key: 'yesterday', label: 'Yesterday' },
-              { key: 'today', label: 'Today' },
-              { key: 'tomorrow', label: 'Tomorrow' }
-            ];
-            
-            const translatedDoctorsList = [t('allDoctors'), ...doctorsList.slice(1)];
-            const doctorSelectValue = state.selectedDoctor === 'All Doctors' ? t('allDoctors') : state.selectedDoctor;
+  startDateInput.addEventListener('change', function() {
+    // If range isn't checked, keep end-date in sync with start-date
+    if (!useRangeCheckbox.checked) {
+      endDateInput.value = this.value;
+    }
+    // Also, ensure end-date is never before start-date
+    if (endDateInput.value < this.value) {
+      endDateInput.value = this.value;
+    }
+    endDateInput.min = this.value; // Set min attribute
+  });
+});
 
-            const bar = createElement(String.raw`
-                <div class="p-4 bg-white rounded-lg shadow-sm mb-6 border border-gray-200">
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
-                    <!-- Search Bar -->
-                    <div class="md:col-span-2">
-                      <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
-                        ${t('searchPatient')}
-                      </label>
-                      <div class="relative">
-                        <input
-                          type="text"
-                          id="search"
-                          value="${state.searchTerm}"
-                          placeholder="${t('searchPlaceholder')}"
-                          class="w-full px-3 py-2 ps-10 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <div class="absolute inset-y-0 start-0 ps-3 flex items-center pointer-events-none">
-                          <i data-lucide="search" class="w-5 h-5 text-gray-400"></i>
-                        </div>
-                      </div>
-                    </div>
+// Close modal on outside click
+document.addEventListener('click', function(event) {
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(modal => {
+    if (event.target === modal) {
+      closeModal();
+    }
+  });
+});
 
-                    <!-- Date Quick Filters -->
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-2">
-                        ${t('date')}
-                      </label>
-                      <div class="flex flex-wrap gap-2">
-                        ${dateFilterButtons.map(filter => `
-                          <button
-                            data-filter="${filter.label}"
-                            class="px-4 py-2 text-sm font-medium rounded-md ${
-                              state.activeDateFilter === filter.label
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }">
-                            ${t(filter.key)}
-                          </button>
-                        `).join('')}
-                      </div>
-                    </div>
-
-                    <!-- Doctor Filter -->
-                    <div>
-                      <label for="doctor-filter" class="block text-sm font-medium text-gray-700 mb-2">
-                        ${t('doctor')}
-                      </label>
-                      <select
-                        id="doctor-filter"
-                        class="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        ${translatedDoctorsList.map(doc => `
-                          <option value="${doc}" ${doc === doctorSelectValue ? 'selected' : ''}>
-                            ${doc}
-                          </option>
-                        `).join('')}
-                      </select>
-                    </div>
-                    
-                    <!-- Custom Date Filter -->
-                    <div class="md:col-span-2">
-                       <div class="flex justify-between items-center mb-2">
-                         <label class="block text-sm font-medium text-gray-700">
-                          ${t('customDate')}
-                         </label>
-                         <div class="flex items-center">
-                           <input
-                             id="useRange"
-                             type="checkbox"
-                             class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                             ${state.useDateRange ? 'checked' : ''}
-                           />
-                           <label for="useRange" class="ms-2 block text-sm text-gray-900">
-                             ${t('useRange')}
-                           </label>
-                         </div>
-                       </div>
-                      <div class="flex flex-col sm:flex-row gap-2">
-                         <input
-                            type="date"
-                            id="customStartDate"
-                            value="${state.customStartDate}"
-                            class="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                          <div id="date-range-end" class="flex-1" style="display: ${state.useDateRange ? 'flex' : 'none'};">
-                            <span class="text-center text-gray-500 self-center px-2">${t('to')}</span>
-                            <input
-                              type="date"
-                              id="customEndDate"
-                              value="${state.customEndDate}"
-                              min="${state.customStartDate}"
-                              class="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            />
-                          </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-            `);
-            
-            // Add Event Listeners
-            bar.querySelector('#search').addEventListener('input', (e) => {
-                setState({ searchTerm: e.target.value });
-            });
-            
-            bar.querySelectorAll('[data-filter]').forEach(btn => {
-                btn.addEventListener('click', () => handleDateFilterClick(btn.dataset.filter));
-            });
-            
-            bar.querySelector('#doctor-filter').addEventListener('change', (e) => {
-                const selectedValue = e.target.value;
-                const newDoctor = (selectedValue === t('allDoctors')) ? 'All Doctors' : selectedValue;
-                setState({ selectedDoctor: newDoctor });
-            });
-            
-            bar.querySelector('#useRange').addEventListener('change', (e) => {
-                setState({ useDateRange: e.target.checked });
-            });
-            
-            bar.querySelector('#customStartDate').addEventListener('input', (e) => {
-                const newStartDate = e.target.value;
-                const newState = { customStartDate: newStartDate, activeDateFilter: 'Custom' };
-                if (!state.customEndDate) {
-                    newState.customEndDate = newStartDate;
-                }
-                setState(newState);
-            });
-
-            bar.querySelector('#customEndDate').addEventListener('input', (e) => {
-                setState({ customEndDate: e.target.value, activeDateFilter: 'Custom' });
-            });
-
-            return bar;
-        }
-
-        // === RENDER FUNCTION ===
-        
-        /**
-         * Main render function. Clears the app root and re-builds the UI
-         * based on the current global state.
-         */
-        function renderApp() {
-            const appRoot = document.getElementById('app-root');
-            appRoot.innerHTML = ''; // Clear the screen
-            
-            // Set language direction
-            document.documentElement.lang = state.language;
-            document.documentElement.dir = state.language === 'ar' ? 'rtl' : 'ltr';
-
-            // --- Filtering Logic ---
-            const today = getISODate(new Date());
-            const tomorrow = getISODate(new Date(Date.now() + 24 * 60 * 60 * 1000));
-            const yesterday = getISODate(new Date(Date.now() - 24 * 60 * 60 * 1000));
-            const lowerSearchTerm = state.searchTerm.toLowerCase();
-
-            const filteredAppointments = state.appointments.filter((appt) => {
-              if (lowerSearchTerm) {
-                if (!appt.patientName.toLowerCase().includes(lowerSearchTerm) &&
-                    (!appt.fileNumber || !appt.fileNumber.toLowerCase().includes(lowerSearchTerm)) &&
-                    (!appt.phoneNumber || !appt.phoneNumber.toLowerCase().includes(lowerSearchTerm))) {
-                  return false;
-                }
-              }
-
-              if (state.selectedDoctor !== 'All Doctors' && appt.doctor !== state.selectedDoctor) {
-                return false;
-              }
-              
-              const apptDate = getISODate(appt.startTime);
-
-              switch (state.activeDateFilter) {
-                case 'Today': return apptDate === today;
-                case 'Tomorrow': return apptDate === tomorrow; 
-                case 'Yesterday': return apptDate === yesterday;
-                case 'Custom':
-                  if (!state.customStartDate) return true;
-                  const startDate = state.customStartDate;
-                  const endDate = state.useDateRange ? (state.customEndDate || startDate) : startDate;
-                  return apptDate >= startDate && apptDate <= endDate;
-                case 'All Days':
-                default:
-                  return true;
-              }
-            });
-
-            // --- Grouping Logic ---
-            const groupedAppointments = filteredAppointments.reduce((acc, appt) => {
-              const date = getISODate(appt.startTime);
-              if (!acc[date]) acc[date] = [];
-              acc[date].push(appt);
-              return acc;
-            }, {});
-            const sortedGroupKeys = Object.keys(groupedAppointments).sort((a, b) => new Date(a) - new Date(b));
-            
-            // --- Build UI ---
-            const appContainer = createElement(String.raw`
-                <div class="max-w-4xl mx-auto p-4 md:p-8 relative font-inter">
-                  <h1 class="text-4xl font-bold text-gray-900 mb-6 text-center">${t('appointments')}</h1>
-                  
-                  <div class="mb-4">
-                    <button id="add-appointment-btn" class="w-full px-4 py-3 bg-green-600 text-white rounded-lg shadow-sm hover:bg-green-700 flex items-center justify-center gap-2 text-base font-medium">
-                      <i data-lucide="plus" class="w-5 h-5"></i> ${t('Add Appointment')}
-                    </button>
-                  </div>
-                  
-                  <!-- Filter bar will be appended here -->
-                  
-                  <div class="space-y-4" id="appointment-list">
-                    <!-- Date groups will be appended here -->
-                  </div>
-                  
-                  <div id="modal-container">
-                    <!-- Modals will be appended here -->
-                  </div>
-                </div>
-            `);
-            
-            // Add Appointment Button
-            appContainer.querySelector('#add-appointment-btn').addEventListener('click', () => {
-                handleOpenAddModal();
-            });
-            
-            // Filter Bar
-            appContainer.insertBefore(createFilterBar(), appContainer.querySelector('#appointment-list'));
-            
-            // Appointment List
-            const listContainer = appContainer.querySelector('#appointment-list');
-            if (sortedGroupKeys.length > 0) {
-                sortedGroupKeys.forEach(dateKey => {
-                    listContainer.appendChild(createDateGroup(dateKey, groupedAppointments[dateKey]));
-                });
-            } else {
-                listContainer.innerHTML = String.raw`
-                    <div class="text-center py-16 px-6 bg-white rounded-lg shadow-sm border border-gray-200">
-                      <i data-lucide="filter" class="w-12 h-12 mx-auto text-gray-400"></i>
-                      <h3 class="mt-2 text-lg font-semibold text-gray-900">${t('noAppointments')}</h3>
-                      <p class="mt-1 text-sm text-gray-500">${t('noAppointmentsDesc')}</p>
-                    </div>
-                `;
-            }
-            
-            // Modals container
-            const modalContainer = appContainer.querySelector('#modal-container');
-            // Modals are now added/removed by the event handlers, not on full render
-
-            // Append the fully built app to the root
-            appRoot.appendChild(appContainer);
-            
-            // Activate all icons
-            loadIcons();
-        }
-
-        // === INITIALIZATION ===
-        
-        // This function will be called by your external button
-        // You need to find your button in your _base.html or navigation
-        // and add onclick="window.toggleAppLanguage()"
-        window.toggleAppLanguage = () => {
-            const newLang = state.language === 'en' ? 'ar' : 'en';
-            setState({ language: newLang });
-        };
-        
-        // Load the app on startup
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                console.log('Initializing appointments app...');
-                state = loadStateFromLocalStorage();
-                console.log('State loaded successfully');
-                renderApp();
-                console.log('App rendered successfully');
-            } catch (error) {
-                console.error("Failed to initialize appointments app:", error);
-                const appRoot = document.getElementById('app-root');
-                if (appRoot) {
-                    const safeErrorMessage = error.message ? error.message.replace(/[<>]/g, '') : 'Unknown error';
-                    appRoot.innerHTML = `
-                        <div class="max-w-4xl mx-auto p-4 md:p-8">
-                            <div class="p-4 bg-red-100 border border-red-300 rounded-md">
-                                <h3 class="font-bold text-red-800">Error Loading Application</h3>
-                                <p class="text-red-700 mb-2">Could not load application data. This might be due to a server-side data injection error.</p>
-                                <button onclick="location.reload()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-                                    Reload Page
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-            }
-        });
-    </script>
-    {% endraw %}
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeModal();
+  }
+});
+</script>
 {% endblock %}

@@ -1,8 +1,13 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+import datetime
+from collections import defaultdict
+from datetime import date, timedelta
+from uuid import uuid4
 
-from flask import Blueprint, current_app, flash, g, redirect, request, url_for, jsonify
+from flask import Blueprint, current_app, flash, g, redirect, request, url_for, jsonify, abort
+from sqlalchemy import or_, text, select
+from sqlalchemy.orm import selectinload
 
 from clinic_app.services.appointments import (
     AppointmentError,
@@ -21,12 +26,10 @@ from clinic_app.services.i18n import T
 from clinic_app.services.security import require_permission
 from clinic_app.services.ui import render_page
 from clinic_app.services.errors import record_exception
-from clinic_app.extensions import csrf
+from clinic_app.extensions import csrf, db
 from clinic_app.services.csrf import ensure_csrf_token
 from flask_wtf.csrf import validate_csrf
-import json
-from datetime import date, datetime, timedelta
-
+from clinic_app.models import Appointment as AppointmentModel, Patient as PatientModel, Doctor as DoctorModel
 bp = Blueprint("appointments", __name__)
 
 
@@ -683,249 +686,292 @@ def edit_appointment(appt_id):
 
 
 # Vanilla appointments template route
+def _ensure_doctor_records() -> None:
+    """Ensure doctors table exists and matches configured doctors."""
+    engine = db.engine
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS doctors (
+                    id TEXT PRIMARY KEY,
+                    doctor_label TEXT NOT NULL,
+                    color TEXT
+                )
+                """
+            )
+        )
+
+    session = db.session()
+    existing = {doc.id: doc for doc in session.query(DoctorModel).all()}
+    colors = get_doctor_colors()
+
+    for slug, label in doctor_choices():
+        if not slug or slug == "all":
+            continue
+        doc = existing.get(slug)
+        color = colors.get(slug)
+        if doc:
+            updated = False
+            if doc.doctor_label != label:
+                doc.doctor_label = label
+                updated = True
+            if color and doc.color != color:
+                doc.color = color
+                updated = True
+            if updated:
+                session.add(doc)
+        else:
+            session.add(DoctorModel(id=slug, doctor_label=label, color=color))
+
+    # Backfill any doctor ids already referenced in appointments
+    seen_ids = set(existing.keys())
+    rows = session.execute(
+        select(AppointmentModel.doctor_id, AppointmentModel.doctor_label).distinct()
+    ).all()
+    for doc_id, doc_label in rows:
+        if not doc_id or doc_id == "all" or doc_id in seen_ids:
+            continue
+        session.add(
+            DoctorModel(
+                id=doc_id,
+                doctor_label=doc_label or doc_id,
+                color=colors.get(doc_id),
+            )
+        )
+        seen_ids.add(doc_id)
+
+    session.commit()
+
+
 @bp.route("/appointments/vanilla", methods=["GET"], endpoint="vanilla")
 @require_permission("appointments:view")
 def appointments_vanilla():
-    """Serve vanilla appointments template with data injection."""
+    """Render the server-side appointments dashboard."""
     try:
-        # Fetch appointments for a rolling 30-day window (past week through next 3 weeks)
-        today = datetime.now().date()
-        start_day = today - timedelta(days=7)
-        end_day = today + timedelta(days=21)
-        appointments = list_for_day(
-            start_day.strftime("%Y-%m-%d"),
-            end_day=end_day.strftime("%Y-%m-%d"),
-            show="all",
+        _ensure_doctor_records()
+
+        today = datetime.date.today()
+        today_str = today.isoformat()
+        yesterday_str = (today - datetime.timedelta(days=1)).isoformat()
+        tomorrow_str = (today + datetime.timedelta(days=1)).isoformat()
+
+        use_range = request.args.get("use_range")
+        search_term = (request.args.get("search_term") or "").strip()
+        doctor_id = request.args.get("doctor_id")
+        start_date_str = request.args.get("start_date")
+        end_date_str = request.args.get("end_date")
+
+        query = (
+            AppointmentModel.query.options(
+                selectinload(AppointmentModel.patient),
+                selectinload(AppointmentModel.doctor),
+            )
+            .join(PatientModel)
+            .outerjoin(DoctorModel)
         )
-        doctors = doctor_choices()
 
-        # Get patients for search using direct database query
-        from clinic_app.services.database import db
+        if start_date_str:
+            start_dt = datetime.datetime.fromisoformat(start_date_str)
+            query = query.filter(AppointmentModel.start_time >= start_dt)
+            if use_range == "on" and end_date_str:
+                end_dt = datetime.datetime.fromisoformat(end_date_str) + datetime.timedelta(days=1)
+            else:
+                end_dt = datetime.datetime.fromisoformat(start_date_str) + datetime.timedelta(days=1)
+            query = query.filter(AppointmentModel.start_time < end_dt)
 
-        conn = db()
-        try:
-            patients_rows = conn.execute("""
-                SELECT id, short_id, full_name, phone
-                FROM patients
-                ORDER BY full_name
-                LIMIT 100
-            """).fetchall()
-            conn.close()
-        except:
-            patients_rows = []
-            if 'conn' in locals():
-                conn.close()
+        if doctor_id and doctor_id != "all":
+            query = query.filter(AppointmentModel.doctor_id == doctor_id)
 
-        # Format appointments for template
-        status_map = {
-            "scheduled": "Scheduled",
-            "checked_in": "Pending",
-            "in_progress": "Pending",
-            "pending": "Pending",
-            "cancelled": "Cancelled",
-            "canceled": "Cancelled",
-            "done": "Done",
-            "complete": "Done",
-        }
+        if search_term:
+            like = f"%{search_term}%"
+            query = query.filter(
+                or_(
+                    PatientModel.full_name.ilike(like),
+                    PatientModel.phone.ilike(like),
+                    PatientModel.short_id.ilike(like),
+                )
+            )
 
-        formatted_appts = []
-        for appt in appointments:
-            status_code = (appt.get("status") or "scheduled").lower()
-            formatted_appts.append({
-                "id": appt["id"],
-                "patientName": appt.get("patient_name") or "",
-                "fileNumber": appt.get("patient_short_id") or "",
-                "phoneNumber": appt.get("patient_phone") or "",
-                "doctor": appt.get("doctor_label") or appt.get("doctor_id") or "",
-                "startTime": appt.get("starts_at") or "",
-                "endTime": appt.get("ends_at") or "",
-                "status": status_map.get(status_code, "Scheduled"),
-                "reason": appt.get("title") or "",
-            })
+        filtered_appts = query.order_by(AppointmentModel.start_time.asc()).all()
 
-        # Format patients for template
-        formatted_patients = []
-        for patient in patients_rows:
-            formatted_patients.append({
-                "fileNumber": patient["short_id"] or "",
-                "name": patient["full_name"] or "",
-                "phoneNumber": patient["phone"] or "",
-                "id": patient["id"],
-            })
+        grouped_appointments: dict[str, list[AppointmentModel]] = defaultdict(list)
+        for appt in filtered_appts:
+            if not appt.start_time:
+                continue
+            grouped_appointments[appt.start_time.date().isoformat()].append(appt)
 
-        # Format doctors for template (simple list where index 0 is the "All Doctors" label).
-        formatted_doctors = ["All Doctors"]
-        for doc_id, doc_name in doctors:
-            formatted_doctors.append(doc_name)
+        ordered_grouped = dict(sorted(grouped_appointments.items()))
 
-        # Render the template with injected data
+        all_patients = PatientModel.query.order_by(PatientModel.full_name.asc()).all()
+        all_doctors = DoctorModel.query.order_by(DoctorModel.doctor_label.asc()).all()
+
         return render_page(
             "appointments/vanilla.html",
-            appointments_json=json.dumps(formatted_appts),
-            patients_json=json.dumps(formatted_patients),
-            doctors_json=json.dumps(formatted_doctors),
+            title="Appointments",
+            grouped_appointments=ordered_grouped,
+            doctors=all_doctors,
+            all_patients=all_patients,
+            today_str=today_str,
+            yesterday_str=yesterday_str,
+            tomorrow_str=tomorrow_str,
+            use_range=use_range,
+            selected_doctor=doctor_id or "all",
         )
 
     except Exception as exc:
         record_exception("appointments.vanilla", exc)
-        # Return template with empty data arrays so frontend can still load gracefully
-        return render_page(
-            "appointments/vanilla.html",
-            appointments_json=json.dumps([]),
-            patients_json=json.dumps([]),
-            doctors_json=json.dumps(["All Doctors"]),
-        ), 500
+        today = datetime.date.today()
+        return (
+            render_page(
+                "appointments/vanilla.html",
+                title="Appointments",
+                grouped_appointments={},
+                doctors=[],
+                all_patients=[],
+                today_str=today.isoformat(),
+                yesterday_str=(today - datetime.timedelta(days=1)).isoformat(),
+                tomorrow_str=(today + datetime.timedelta(days=1)).isoformat(),
+                use_range=request.args.get("use_range"),
+                selected_doctor=request.args.get("doctor_id") or "all",
+            ),
+            500,
+        )
 
 
-# API endpoints for vanilla template
-@csrf.exempt
-@bp.route("/api/patients/search", methods=["GET"])
-@require_permission("patients:view")
-def api_search_patients():
-    """Search patients by name, file number or phone."""
-    try:
-        query = request.args.get('q', '').strip()
-        if len(query) < 2:
-            return jsonify([]), 200
+# API endpoints for SSR template
+@bp.route("/api/appointments/<int:appt_id>", methods=["GET"])
+@bp.route("/api/appointments/<appt_id>", methods=["GET"])
+@require_permission("appointments:view")
+def api_get_appointment(appt_id):
+    """Return appointment details for view/edit modals."""
+    _ensure_doctor_records()
+    appt_key = str(appt_id)
+    appt = (
+        AppointmentModel.query.options(
+            selectinload(AppointmentModel.patient),
+            selectinload(AppointmentModel.doctor),
+        )
+        .filter(AppointmentModel.id == appt_key)
+        .first()
+    )
+    if not appt:
+        abort(404)
 
-        # Search in database
-        from clinic_app.services.database import db
-
-        conn = db()
-        try:
-            rows = conn.execute("""
-                SELECT id, short_id, full_name, phone
-                FROM patients
-                WHERE LOWER(full_name) LIKE LOWER(?)
-                   OR LOWER(short_id) LIKE LOWER(?)
-                   OR phone LIKE ?
-                ORDER BY full_name
-                LIMIT 10
-            """, (f'%{query}%', f'%{query}%', f'%{query}%')).fetchall()
-            conn.close()
-        except:
-            if 'conn' in locals():
-                conn.close()
-            rows = []
-
-        # Convert to JSON format expected by frontend
-        results = []
-        for row in rows:
-            results.append({
-                'id': row['id'],
-                'name': row['full_name'],
-                'fileNumber': row['short_id'],
-                'phoneNumber': row['phone']
-            })
-
-        return jsonify(results), 200
-
-    except Exception as exc:
-        record_exception("api.patients.search", exc)
-        return jsonify({"error": "Internal server error"}), 500
-
-@csrf.exempt
-@bp.route("/api/appointments/add", methods=["POST"])
-@require_permission("appointments:edit")
-def api_add_appointment():
-    """API endpoint to add new appointment."""
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-
-        # Map template fields to service fields
-        form_data = {
-            "day": data.get("startTime", datetime.now().strftime("%Y-%m-%d"))[:10],
-            "start_time": data.get("startTime", "")[11:16] if len(data.get("startTime", "")) > 11 else "09:00",
-            "doctor_id": data.get("doctor", ""),
-            "title": data.get("reason", ""),
-            "patient_id": data.get("patient_id"),
-            "patient_name": data.get("patientName"),
-            "patient_phone": data.get("phoneNumber"),
+    patient = appt.patient
+    doctor = appt.doctor
+    return jsonify(
+        {
+            "id": appt.id,
+            "patient_id": patient.id if patient else appt.patient_id,
+            "patient_name": patient.full_name if patient else appt.patient_name,
+            "patient_short_id": patient.short_id if patient else None,
+            "doctor_id": doctor.id if doctor else appt.doctor_id,
+            "doctor_name": doctor.doctor_label if doctor else appt.doctor_label,
+            "status": appt.status,
+            "title": appt.title,
+            "notes": appt.notes,
+            "start_time": appt.start_time.isoformat() if appt.start_time else None,
+            "end_time": appt.end_time.isoformat() if appt.end_time else None,
         }
-
-        appt_id = create_appointment(form_data, actor_id=getattr(g.current_user, "id", None))
-        return jsonify({"id": appt_id, "status": "created"}), 201
-
-    except AppointmentOverlap as e:
-        return jsonify({"error": "Time slot conflict"}), 409
-    except AppointmentError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as exc:
-        record_exception("api.appointments.add", exc)
-        return jsonify({"error": "Internal server error"}), 500
+    )
 
 
 @csrf.exempt
-@bp.route("/api/appointments/edit/<appt_id>", methods=["PUT"])
+@bp.route("/api/appointments/save", methods=["POST"])
 @require_permission("appointments:edit")
-def api_edit_appointment(appt_id):
-    """API endpoint to edit existing appointment."""
+def api_save_appointment():
+    """Create or update an appointment."""
+    _ensure_doctor_records()
+    data = request.get_json() or {}
+    appt_id = data.get("id")
+    patient_id = data.get("patient_id")
+    doctor_id = data.get("doctor_id")
+    day = data.get("date")
+    start_time_value = data.get("start_time")
+    status = data.get("status") or "scheduled"
+    title = data.get("title") or "Appointment"
+    notes = data.get("notes")
+
+    if not all([patient_id, doctor_id, day, start_time_value]):
+        return jsonify({"success": False, "error": "Missing required fields."}), 400
+
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
+        start_dt = datetime.datetime.fromisoformat(f"{day}T{start_time_value}")
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid date or time."}), 400
+    end_dt = start_dt + datetime.timedelta(minutes=30)
 
-        # Map template fields to service fields
-        form_data = {
-            "day": data.get("startTime", "")[:10],
-            "start_time": data.get("startTime", "")[11:16] if len(data.get("startTime", "")) > 11 else "09:00",
-            "doctor_id": data.get("doctor", ""),
-            "title": data.get("reason", ""),
-            "notes": data.get("notes", ""),
-            "status": data.get("status", "scheduled"),
-        }
+    patient = PatientModel.query.filter_by(id=patient_id).first()
+    if not patient:
+        return jsonify({"success": False, "error": "Invalid patient."}), 400
 
-        update_appointment(appt_id, form_data, actor_id=getattr(g.current_user, "id", None))
-        return jsonify({"id": appt_id, "status": "updated"}), 200
+    doctor = DoctorModel.query.filter_by(id=doctor_id).first()
+    if not doctor:
+        doctor_map = {slug: label for slug, label in doctor_choices()}
+        doctor_label = doctor_map.get(doctor_id, doctor_id)
+        doctor = DoctorModel(id=doctor_id, doctor_label=doctor_label)
+        db.session.add(doctor)
 
-    except AppointmentOverlap as e:
-        return jsonify({"error": "Time slot conflict"}), 409
-    except AppointmentNotFound:
-        return jsonify({"error": "Appointment not found"}), 404
-    except AppointmentError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as exc:
-        record_exception("api.appointments.edit", exc)
-        return jsonify({"error": "Internal server error"}), 500
+    if appt_id:
+        appt = AppointmentModel.query.filter_by(id=str(appt_id)).first()
+        if not appt:
+            return jsonify({"success": False, "error": "Appointment not found."}), 404
+    else:
+        appt = AppointmentModel(id=uuid4().hex)
+
+    appt.patient = patient
+    appt.patient_id = patient.id
+    appt.patient_name = patient.full_name
+    appt.patient_phone = patient.phone
+    appt.doctor = doctor
+    appt.doctor_id = doctor.id
+    appt.doctor_label = doctor.doctor_label
+    appt.title = title
+    appt.status = status
+    appt.notes = notes
+    appt.start_time = start_dt
+    appt.end_time = end_dt
+
+    db.session.add(appt)
+    db.session.commit()
+    return jsonify({"success": True, "id": appt.id})
 
 
 @csrf.exempt
-@bp.route("/api/appointments/status/<appt_id>", methods=["PATCH"])
+@bp.route("/api/appointments/delete", methods=["POST"])
 @require_permission("appointments:edit")
-def api_update_status(appt_id):
-    """API endpoint to update appointment status."""
-    try:
-        data = request.get_json()
-        if not data or "status" not in data:
-            return jsonify({"error": "Status required"}), 400
+def api_delete_appointment():
+    """Delete an appointment."""
+    data = request.get_json() or {}
+    appt_id = data.get("id")
+    if not appt_id:
+        return jsonify({"success": False, "error": "Missing appointment id."}), 400
 
-        update_status(appt_id, data["status"])
-        return jsonify({"id": appt_id, "status": data["status"]}), 200
+    appt = AppointmentModel.query.filter_by(id=str(appt_id)).first()
+    if not appt:
+        return jsonify({"success": False, "error": "Appointment not found."}), 404
 
-    except AppointmentNotFound:
-        return jsonify({"error": "Appointment not found"}), 404
-    except AppointmentError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as exc:
-        record_exception("api.appointments.status", exc)
-        return jsonify({"error": "Internal server error"}), 500
+    db.session.delete(appt)
+    db.session.commit()
+    return jsonify({"success": True})
 
 
 @csrf.exempt
-@bp.route("/api/appointments/delete/<appt_id>", methods=["DELETE"])
+@bp.route("/api/appointments/status", methods=["POST"])
 @require_permission("appointments:edit")
-def api_delete_appointment(appt_id):
-    """API endpoint to delete appointment."""
-    try:
-        delete_appt(appt_id)
-        return jsonify({"message": "Appointment deleted"}), 200
+def api_update_status():
+    """Update appointment status."""
+    data = request.get_json() or {}
+    appt_id = data.get("id")
+    status = data.get("status")
+    if not appt_id or not status:
+        return jsonify({"success": False, "error": "Missing id or status."}), 400
 
-    except AppointmentNotFound:
-        return jsonify({"error": "Appointment not found"}), 404
-    except AppointmentError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as exc:
-        record_exception("api.appointments.delete", exc)
-        return jsonify({"error": "Internal server error"}), 500
+    appt = AppointmentModel.query.filter_by(id=str(appt_id)).first()
+    if not appt:
+        return jsonify({"success": False, "error": "Appointment not found."}), 404
+
+    appt.status = status
+    db.session.commit()
+    return jsonify({"success": True})

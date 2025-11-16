@@ -58,10 +58,11 @@ def init_security(app) -> None:
         response.headers.setdefault(
             "Content-Security-Policy",
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.tailwindcss.com https://unpkg.com; "
             "img-src 'self' data:; "
-            "style-src 'self' 'unsafe-inline'; "
-            "font-src 'self' data:",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' data: https://fonts.gstatic.com; "
+            "connect-src 'self' https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com;",
         )
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         response.headers.setdefault("X-Frame-Options", "DENY")
